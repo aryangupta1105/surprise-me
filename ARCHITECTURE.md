@@ -51,6 +51,10 @@ Block types today: heading, paragraph, handwritten, quote, letter, image, galler
 - **Serving:** creators use `/api/uploads/:id`; recipients use `/api/s/:token/photo/:id` (published surprise only). With S3 storage this is a 302 to a 1-hour signed GET; locally the file is streamed with Range support.
 - **Signing:** SigV4 presigning is implemented in ~30 lines (`sigv4.ts`, tested against AWS's published example) instead of adding the AWS SDK.
 
+## Music and backgrounds
+
+`theme.music` is the soundtrack; `scene.music` replaces it while that scene is open; `scene.background` is a photo the palette washes over. All reference media-library ids, served through the same private routes. The player never autoplays sound: the recipient presses play once, then the bar follows scenes. Any `<audio>`/`<video>` played inside a scene fires a window event that pauses the soundtrack.
+
 ## Templates (`src/templates/library.ts`, `src/engine/compose.ts`)
 
 Templates are typed data: scenes with `{to}`/`{from}` placeholders and empty media slots. `composeTemplates(ids, options)` and `insertTemplate(doc, id, at, names)` are pure and validated with `parseDoc`; the API runs them on the server (`src/server/templates.ts`) and saves template drafts as `SurpriseVersion` with `source: 'template'`. The browser uses the same functions only for previews and the summary line. `missingMedia(doc)` lists empty slots for the editor.

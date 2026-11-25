@@ -192,4 +192,15 @@ export const TEMPLATES: Template[] = [
   },
 ]
 
-export const templateById = (id: string) => TEMPLATES.find((t) => t.id === id)
+/** "Start from a blank canvas": the smallest useful story, not listed with the templates. */
+export const BLANK: Template = {
+  id: 'blank', name: 'Blank canvas', emoji: '✨', category: 'Celebrate', description: 'An opening and a finale — build everything in between yourself.',
+  occasions: ['just_because'], palette: 'candy', motion: 'full', customize: ['Everything'],
+  scenes: [
+    opening('A surprise for you', 'Hi {to}', 'I made something for you.'),
+    { kind: 'content', title: 'Scene 2', transition: 'slide', blocks: [b('heading', { text: 'Your first scene', size: 'lg', kicker: '' })] },
+    finale('With love', 'Write your closing message here.'),
+  ],
+}
+
+export const templateById = (id: string) => (id === BLANK.id ? BLANK : TEMPLATES.find((t) => t.id === id))

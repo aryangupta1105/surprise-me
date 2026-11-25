@@ -17,6 +17,10 @@ export const Block = z.object({
 })
 export type Block = z.infer<typeof Block>
 
+/** A soundtrack: the creator's own uploaded audio (no third-party tracks). Plays only after the recipient presses play. */
+export const Music = z.object({ audioId: Id, title: z.string().max(120).default(''), volume: z.number().min(0).max(1).default(0.6), loop: z.boolean().default(true) })
+export type Music = z.infer<typeof Music>
+
 export const Scene = z.object({
   id: Id,
   kind: z.enum(SCENE_KINDS),
@@ -24,11 +28,13 @@ export const Scene = z.object({
   palette: z.enum(PALETTES).optional(), // overrides the document palette for this scene
   transition: z.enum(TRANSITIONS).default('fade'),
   unlockAt: z.string().datetime().optional(), // progressive reveal: content withheld until then
+  background: z.object({ photoId: Id, visibility: z.number().min(0.1).max(1).default(0.5) }).optional(), // photo behind the scene, softened by the palette
+  music: Music.optional(), // replaces the surprise's soundtrack while this scene is open
   blocks: z.array(Block).max(20),
 })
 export type Scene = z.infer<typeof Scene>
 
-export const DocTheme = z.object({ palette: z.enum(PALETTES), motion: z.enum(MOTION).default('full') })
+export const DocTheme = z.object({ palette: z.enum(PALETTES), motion: z.enum(MOTION).default('full'), music: Music.optional() })
 
 export const SurpriseDoc = z
   .object({ version: z.literal(1), theme: DocTheme, scenes: z.array(Scene).min(1).max(30) })

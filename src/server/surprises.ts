@@ -84,6 +84,31 @@ export async function saveDraftDoc(surpriseId: string, ownerId: string, doc: unk
   return v
 }
 
+export async function listVersions(id: string, ownerId: string) {
+  await ownedSurprise(id, ownerId)
+  const rows = await db.surpriseVersion.findMany({ where: { surpriseId: id }, orderBy: { createdAt: 'desc' }, take: 60 })
+  return rows.map((v) => ({ id: v.id, source: v.source, createdAt: v.createdAt.toISOString(), scenes: ((v.doc as { scenes?: unknown[] }).scenes ?? []).length }))
+}
+
+export async function versionDoc(id: string, ownerId: string, versionId: string) {
+  await ownedSurprise(id, ownerId)
+  const v = await db.surpriseVersion.findFirst({ where: { id: versionId, surpriseId: id } })
+  if (!v) throw new AppError(404, 'Version not found.')
+  return parseDoc(v.doc)
+}
+
+/** Legacy single-experience surprise → scene document as its first draft version (published link unaffected). */
+export async function convertToScenes(id: string, ownerId: string) {
+  const s = await ownedSurprise(id, ownerId)
+  if (s.draftVersionId) return
+  // Published before versions existed: freeze what recipients see now, as saveContent does.
+  if (s.status === 'PUBLISHED' && !s.publishedVersionId) {
+    const v = await db.surpriseVersion.create({ data: { surpriseId: id, doc: (await draftDoc(s)) as Prisma.InputJsonValue, source: 'legacy' } })
+    await db.surprise.update({ where: { id }, data: { publishedVersionId: v.id } })
+  }
+  await saveDraftDoc(id, ownerId, await draftDoc(s), 'manual')
+}
+
 function legacyDraftDoc(s: { content: unknown; theme: unknown }): SurpriseDoc {
   if (!s.content) throw new AppError(400, 'Generate and review the surprise before publishing.')
   const content = StoredContent.parse(s.content)
@@ -185,7 +210,7 @@ export function withLockedContentHidden(doc: SurpriseDoc, now = Date.now()): Sur
     ...doc,
     scenes: doc.scenes.map((scene) =>
       locked(scene.unlockAt)
-        ? { ...scene, blocks: [] }
+        ? { ...scene, blocks: [], background: undefined, music: undefined }
         : {
             ...scene,
             blocks: scene.blocks.map((b) =>

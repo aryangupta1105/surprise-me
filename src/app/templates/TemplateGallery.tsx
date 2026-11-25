@@ -7,7 +7,7 @@ import { Button, Chip, Field, Input, Modal, Select, api, cx } from '@/components
 import { composeTemplates, missingMedia, type MissingMedia } from '@/engine/compose'
 import { OCCASION_INFO, PALETTE_INFO } from '@/lib/catalog'
 import { OCCASIONS, PALETTES, type Occasion, type Palette } from '@/lib/schemas'
-import { TEMPLATES, templateById, type Template } from '@/templates/library'
+import { BLANK, TEMPLATES, templateById, type Template } from '@/templates/library'
 
 const Player = dynamic(() => import('@/engine/player/Player').then((m) => m.Player), { ssr: false })
 const KIND_EMOJI: Record<string, string> = { opening: '🎬', content: '📄', game: '🎲', media: '📸', finale: '💝' }
@@ -39,6 +39,10 @@ export function TemplateGallery() {
           <button key={c} role="tab" aria-selected={cat === c} onClick={() => setCat(c)} className={cx('h-9 px-4 rounded-full text-sm font-semibold ring-1', cat === c ? 'bg-ink text-white ring-ink' : 'bg-white ring-line hover:ring-ink/30')}>{c}</button>
         ))}
       </div>
+
+      <button onClick={() => { setPicked([BLANK.id]); setSetup(true) }} className="mt-6 w-full sm:w-auto rounded-2xl border-2 border-dashed border-line bg-white/60 px-5 py-3 text-left hover:border-ink/30">
+        <span className="font-semibold">✨ Start from a blank canvas</span> <span className="text-sm text-ink-soft">— an opening and a finale; add the rest yourself</span>
+      </button>
 
       <ul className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-6">
         {TEMPLATES.filter((t) => cat === 'All' || t.category === cat).map((t) => {
@@ -96,7 +100,7 @@ export function TemplateGallery() {
         )}
       </Modal>
 
-      {setup && <SetupModal ids={picked} onClose={() => setSetup(false)} />}
+      {setup && <SetupModal ids={picked} onClose={() => { setSetup(false); setPicked((p) => p.filter((x) => x !== BLANK.id)) }} />}
     </div>
   )
 }

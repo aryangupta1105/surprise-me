@@ -2,11 +2,13 @@
 
 import { useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { BlockForm, IconBtn } from '@/components/BlockForm'
+import { MediaInput } from '@/components/MediaInput'
 import { Button, Card, Chip, Modal, Select, api, cx, useToast } from '@/components/ui'
 import { BLOCKS, BLOCK_TYPES, type BlockType } from '@/engine/blocks'
 import { missingMedia } from '@/engine/compose'
-import { SCENE_KINDS, TRANSITIONS, type SurpriseDoc } from '@/engine/doc'
+import { SCENE_KINDS, TRANSITIONS, type Music, type SurpriseDoc } from '@/engine/doc'
 import * as ops from '@/engine/ops'
 import { Player } from '@/engine/player/Player'
 import { PALETTE_INFO } from '@/lib/catalog'
@@ -35,6 +37,9 @@ export function DocStudio({ initial, initialDoc, isGuest }: { initial: EditorSur
   const [saveState, setSaveState] = useState<'saved' | 'saving' | 'unsaved' | 'error'>('saved')
   const [adding, setAdding] = useState(false)
   const [previewKey, setPreviewKey] = useState(0)
+  const [dragging, setDragging] = useState<string | null>(null)
+  const [playing, setPlaying] = useState<'phone' | 'desktop' | null>(null)
+  const [history, setHistory] = useState<{ id: string; source: string; createdAt: string; scenes: number }[] | null>(null)
   const [inserting, setInserting] = useState<'closed' | 'open' | string>('closed') // template id while busy
   const latest = useRef(doc)
 
@@ -136,6 +141,28 @@ export function DocStudio({ initial, initialDoc, isGuest }: { initial: EditorSur
     }
   }
 
+  const openHistory = async () => {
+    try {
+      setHistory((await api<{ versions: NonNullable<typeof history> }>(`/api/surprises/${s.id}/versions`)).versions)
+    } catch (e) {
+      toast((e as Error).message, 'bad')
+    }
+  }
+  /** Restoring is an ordinary edit: it can be undone, and autosave records it as a new version. */
+  const restore = async (versionId: string) => {
+    try {
+      const { doc: old } = await api<{ doc: SurpriseDoc }>(`/api/surprises/${s.id}/versions/${versionId}`)
+      apply(() => old)
+      setSel(old.scenes[0].id)
+      setPreviewKey((k) => k + 1)
+      setHistory(null)
+      toast('Version restored — Undo brings back what you had', 'good')
+    } catch (e) {
+      toast((e as Error).message, 'bad')
+    }
+  }
+  const setMusic = (cur: Music | undefined, audioId: string | undefined): Music | undefined => (audioId ? { title: '', volume: 0.6, loop: true, ...cur, audioId } : undefined)
+
   return (
     <div className="mx-auto max-w-[1400px] px-5 pb-24">
       <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
@@ -148,8 +175,10 @@ export function DocStudio({ initial, initialDoc, isGuest }: { initial: EditorSur
         </div>
         <div className="flex items-center gap-2">
           <span className="text-sm text-ink-soft" aria-live="polite">{{ saved: 'All changes saved', saving: 'Saving…', unsaved: 'Unsaved changes', error: 'Not saved' }[saveState]}</span>
+          <Button variant="ghost" size="sm" onClick={openHistory}>History</Button>
           <Button variant="ghost" size="sm" onClick={undo} disabled={!hist.past} aria-label="Undo">↶ Undo</Button>
           <Button variant="ghost" size="sm" onClick={redo} disabled={!hist.future} aria-label="Redo">↷ Redo</Button>
+          <Button variant="secondary" size="sm" onClick={() => setPlaying('phone')}>▶ Play whole surprise</Button>
         </div>
       </div>
 
@@ -160,6 +189,38 @@ export function DocStudio({ initial, initialDoc, isGuest }: { initial: EditorSur
           </button>
         ))}
       </div>
+
+      {/* Portalled to <body> so the page's own stacking (nav, main) can never cover it. */}
+      {playing && createPortal(
+        <div className="fixed inset-0 z-50 bg-ink/80 backdrop-blur-sm flex flex-col" role="dialog" aria-modal aria-label="Play whole surprise">
+          <div className="flex items-center justify-between gap-3 p-3 text-white">
+            <div className="inline-flex rounded-full bg-white/10 p-1" role="tablist" aria-label="Device">
+              {(['phone', 'desktop'] as const).map((d) => (
+                <button key={d} role="tab" aria-selected={playing === d} onClick={() => setPlaying(d)} className={cx('h-8 px-4 rounded-full text-sm font-semibold', playing === d ? 'bg-white text-ink' : 'text-white/80')}>{d === 'phone' ? '📱 Phone' : '🖥 Desktop'}</button>
+              ))}
+            </div>
+            <button onClick={() => setPlaying(null)} className="h-9 px-4 rounded-full bg-white/10 hover:bg-white/20 text-sm font-semibold">Close</button>
+          </div>
+          <div className="flex-1 min-h-0 flex justify-center px-3 pb-3">
+            <div className={cx('h-full overflow-y-auto bg-white shadow-2xl', playing === 'phone' ? 'w-[390px] max-w-full rounded-[2.25rem] ring-8 ring-black' : 'w-full max-w-6xl rounded-2xl')}>
+              <Player key={playing} doc={doc} startAt={0} photo={(id) => (id ? `/api/uploads/${id}` : null)} />
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
+
+      <Modal open={history !== null} onClose={() => setHistory(null)} title="Version history">
+        <p className="text-sm text-ink-soft mb-4">Saved automatically as you edit (the last 30 drafts, plus everything you published).</p>
+        <ul className="space-y-2 max-h-[55dvh] overflow-y-auto">
+          {history?.map((v) => (
+            <li key={v.id} className="flex items-center justify-between gap-3 rounded-2xl ring-1 ring-line p-3">
+              <span className="text-sm"><span className="font-semibold">{new Date(v.createdAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</span><span className="text-ink-soft"> · {{ publish: 'Published', autosave: 'Autosave', manual: 'Saved', ai: 'AI draft', template: 'From template', legacy: 'Before scenes' }[v.source] ?? v.source} · {v.scenes} scenes</span></span>
+              <Button size="sm" variant="secondary" onClick={() => restore(v.id)}>Restore</Button>
+            </li>
+          ))}
+        </ul>
+      </Modal>
 
       <Modal open={inserting !== 'closed'} onClose={() => setInserting('closed')} title="Insert a template">
         <p className="text-sm text-ink-soft mb-4">Its scenes go after “{scene.title || 'this scene'}”. Your opening, finale and colours stay as they are.</p>
@@ -184,7 +245,15 @@ export function DocStudio({ initial, initialDoc, isGuest }: { initial: EditorSur
             <h2 className="text-xs font-bold uppercase tracking-widest text-ink-soft">Scenes</h2>
             <ol className="space-y-2">
               {doc.scenes.map((sc, i) => (
-                <li key={sc.id}>
+                <li
+                  key={sc.id}
+                  draggable
+                  onDragStart={(e) => { setDragging(sc.id); e.dataTransfer.effectAllowed = 'move' }}
+                  onDragOver={(e) => dragging && e.preventDefault()}
+                  onDrop={(e) => { e.preventDefault(); if (dragging && dragging !== sc.id) apply((d) => ops.moveScene(d, dragging, i)); setDragging(null) }}
+                  onDragEnd={() => setDragging(null)}
+                  className={cx('cursor-grab active:cursor-grabbing', dragging === sc.id && 'opacity-40')}
+                >
                   <div className={cx('rounded-2xl ring-1 bg-white px-3 py-2.5 transition', sc.id === sel ? 'ring-2 ring-rose' : 'ring-line')}>
                     <button onClick={() => { setSel(sc.id); setPreviewKey((k) => k + 1) }} className="w-full text-left">
                       <span className="text-xs text-ink-soft">{i + 1} · {KIND_EMOJI[sc.kind]} {sc.kind}{sc.unlockAt ? ' · 🔒' : ''}</span>
@@ -224,6 +293,7 @@ export function DocStudio({ initial, initialDoc, isGuest }: { initial: EditorSur
               <Select value={doc.theme.motion} onChange={(e) => apply((d) => ops.setTheme(d, { motion: e.target.value as SurpriseDoc['theme']['motion'] }))} aria-label="Animation" className="py-2 text-sm">
                 {MOTION.map((m) => <option key={m} value={m}>Animation: {m}</option>)}
               </Select>
+              <MusicFields label="Soundtrack for the whole surprise" surpriseId={s.id} music={doc.theme.music} onChange={(m) => apply((d) => ops.setTheme(d, { music: m }))} setMusic={setMusic} />
             </Card>
           </aside>
 
@@ -248,6 +318,18 @@ export function DocStudio({ initial, initialDoc, isGuest }: { initial: EditorSur
               <label className="block"><span className="block text-xs font-semibold text-ink-soft mb-1">Lock until (optional)</span>
                 <input type="datetime-local" value={scene.unlockAt ? new Date(new Date(scene.unlockAt).getTime() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 16) : ''} onChange={(e) => apply((d) => ops.updateScene(d, scene.id, { unlockAt: e.target.value ? new Date(e.target.value).toISOString() : undefined }))} className="w-full rounded-2xl bg-white px-4 py-2 ring-1 ring-line" />
               </label>
+              <div className="sm:col-span-2 grid sm:grid-cols-2 gap-3 pt-2 border-t border-line">
+                <div>
+                  <span className="block text-xs font-semibold text-ink-soft mb-1">Background photo</span>
+                  <MediaInput kind="image" surpriseId={s.id} value={scene.background?.photoId} onChange={(id) => apply((d) => ops.updateScene(d, scene.id, { background: id ? { visibility: 0.5, ...scene.background, photoId: id } : undefined }))} />
+                  {scene.background && (
+                    <label className="block mt-2 text-xs font-semibold text-ink-soft">How visible
+                      <input type="range" min={0.1} max={1} step={0.05} value={scene.background.visibility} onChange={(e) => apply((d) => ops.updateScene(d, scene.id, { background: { ...scene.background!, visibility: Number(e.target.value) } }))} className="w-full accent-[var(--color-rose)]" />
+                    </label>
+                  )}
+                </div>
+                <MusicFields label="Music for this scene (replaces the soundtrack)" surpriseId={s.id} music={scene.music} onChange={(m) => apply((d) => ops.updateScene(d, scene.id, { music: m }))} setMusic={setMusic} />
+              </div>
             </Card>
 
             {scene.blocks.map((b, i) => (
@@ -294,6 +376,26 @@ export function DocStudio({ initial, initialDoc, isGuest }: { initial: EditorSur
               <Player key={`${previewKey}-${sel}`} doc={doc} startAt={sceneIndex} photo={(id) => (id ? `/api/uploads/${id}` : null)} preview />
             </div>
           </aside>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function MusicFields({ label, surpriseId, music, onChange, setMusic }: { label: string; surpriseId: string; music?: Music; onChange: (m: Music | undefined) => void; setMusic: (cur: Music | undefined, id: string | undefined) => Music | undefined }) {
+  return (
+    <div>
+      <span className="block text-xs font-semibold text-ink-soft mb-1">{label}</span>
+      <MediaInput kind="audio" surpriseId={surpriseId} value={music?.audioId} onChange={(id) => onChange(setMusic(music, id))} />
+      {music && (
+        <div className="mt-2 space-y-2">
+          <input value={music.title} maxLength={120} onChange={(e) => onChange({ ...music, title: e.target.value })} placeholder="Track name shown to them (optional)" className="w-full rounded-2xl bg-white px-3 py-1.5 text-sm ring-1 ring-line" aria-label="Track name" />
+          <div className="flex items-center gap-3">
+            <label className="flex-1 text-xs font-semibold text-ink-soft">Volume
+              <input type="range" min={0} max={1} step={0.05} value={music.volume} onChange={(e) => onChange({ ...music, volume: Number(e.target.value) })} className="w-full accent-[var(--color-rose)]" />
+            </label>
+            <label className="flex items-center gap-1.5 text-xs font-semibold"><input type="checkbox" checked={music.loop} onChange={(e) => onChange({ ...music, loop: e.target.checked })} className="size-4" /> Loop</label>
+          </div>
         </div>
       )}
     </div>

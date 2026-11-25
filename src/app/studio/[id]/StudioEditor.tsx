@@ -42,6 +42,18 @@ export function StudioEditor({ initial, isGuest }: { initial: EditorSurprise; is
   const [tab, setTab] = useState<(typeof TABS)[number]>(params.get('tab') === 'share' ? 'Share' : 'Edit')
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [converting, setConverting] = useState(false)
+  const convert = async () => {
+    if (dirty && !confirm('You have unsaved changes. Switch anyway? (Unsaved edits will be lost.)')) return
+    setConverting(true)
+    try {
+      await api(`/api/surprises/${s.id}/convert`, { body: {} })
+      window.location.reload()
+    } catch (e) {
+      toast((e as Error).message, 'bad')
+      setConverting(false)
+    }
+  }
   const [generating, setGenerating] = useState(false)
   const [previewKey, setPreviewKey] = useState(0)
 
@@ -137,6 +149,10 @@ export function StudioEditor({ initial, isGuest }: { initial: EditorSurprise; is
         </div>
       </div>
       {s.generationError && s.generationStatus === 'FAILED' && <div className="mb-6"><ErrorState message={s.generationError} onRetry={regenerateAll} /></div>}
+      <div className="mb-6 rounded-2xl bg-white ring-1 ring-line p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <p className="text-sm"><span className="font-semibold">Want more?</span> <span className="text-ink-soft">Switch to the scene editor to add scenes, photos, music, video and templates. Your published link keeps showing what it shows now until you publish again.</span></p>
+        <Button size="sm" variant="secondary" loading={converting} onClick={convert}>Switch to scene editor</Button>
+      </div>
 
       <div role="tablist" className="inline-flex rounded-full bg-white ring-1 ring-line p-1 mb-6 lg:hidden">
         {TABS.map((t) => (

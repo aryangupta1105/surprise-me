@@ -2,9 +2,9 @@
 
 import confetti from 'canvas-confetti'
 import { AnimatePresence, MotionConfig, motion, type Variants } from 'framer-motion'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { BLOCKS, isInteractive } from '../blocks'
-import type { Block, SurpriseDoc } from '../doc'
+import type { Block, Music, SurpriseDoc } from '../doc'
 import { RENDERERS, type BlockContext } from './renderers'
 
 const TRANSITIONS: Record<string, Variants> = {
@@ -87,10 +87,21 @@ export function Player({ doc, photo, onProgress, resumeKey, preview, startAt }: 
   }
 
   const variants = TRANSITIONS[motionLevel === 'off' ? 'none' : scene.transition] ?? TRANSITIONS.fade
+  const music = scene.music ?? doc.theme.music
+  const bg = scene.background && photo(scene.background.photoId)
 
   return (
     <MotionConfig reducedMotion={motionLevel === 'off' ? 'always' : 'user'}>
       <div data-palette={scene.palette ?? doc.theme.palette} className={`relative overflow-hidden transition-[background] duration-700 ${preview ? 'min-h-[640px] rounded-[1.75rem]' : 'min-h-dvh'}`}>
+        {bg && (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element -- private, access-checked media */}
+            <img src={bg} alt="" className="absolute inset-0 size-full object-cover" aria-hidden />
+            {/* The palette washes over the photo so text keeps its contrast. */}
+            <div className="absolute inset-0" style={{ background: 'var(--p-bg)', opacity: 1 - scene.background!.visibility * 0.85 }} aria-hidden />
+          </>
+        )}
+        {music && <MusicBar music={music} src={photo(music.audioId)} />}
         {total > 1 && (
           <div className="absolute top-0 inset-x-0 z-20 h-1 bg-black/5" aria-hidden>
             <div className="h-full transition-all duration-500" style={{ width: `${((index + 1) / total) * 100}%`, background: 'var(--p-accent)' }} />
@@ -99,7 +110,8 @@ export function Player({ doc, photo, onProgress, resumeKey, preview, startAt }: 
         {index > 0 && (
           <button onClick={() => go(index - 1)} className="absolute top-4 left-4 z-20 size-10 rounded-full bg-black/5 hover:bg-black/10 grid place-items-center" aria-label="Previous scene">←</button>
         )}
-        <div className="relative z-10 mx-auto max-w-xl px-5 py-12 sm:py-16 [perspective:1200px]">
+        {/* Media inside a scene (voice notes, videos) pauses the soundtrack so they never play over each other. */}
+        <div className="relative z-10 mx-auto max-w-xl px-5 py-12 sm:py-16 [perspective:1200px]" onPlayCapture={(e) => e.target instanceof HTMLMediaElement && e.target.dataset.music === undefined && window.dispatchEvent(new Event('sm:pause-music'))}>
           <AnimatePresence mode="wait">
             <motion.section key={scene.id} variants={variants} initial="in" animate="on" exit="out" transition={{ duration: motionLevel === 'gentle' ? 0.7 : 0.45 }} aria-label={scene.title || `Scene ${index + 1}`} className="space-y-6">
               {locked ? (
@@ -127,6 +139,35 @@ export function Player({ doc, photo, onProgress, resumeKey, preview, startAt }: 
         </div>
       </div>
     </MotionConfig>
+  )
+}
+
+/** The soundtrack: starts only when the recipient presses play (browsers block autoplay with sound), then follows scene changes. */
+function MusicBar({ music, src }: { music: Music; src: string | null }) {
+  const ref = useRef<HTMLAudioElement>(null)
+  const [on, setOn] = useState(false)
+  useEffect(() => {
+    const a = ref.current
+    if (!a) return
+    a.volume = music.volume
+    a.loop = music.loop
+    if (on) a.play().catch(() => setOn(false))
+    else a.pause()
+  }, [on, src, music.volume, music.loop])
+  useEffect(() => {
+    const pause = () => setOn(false)
+    window.addEventListener('sm:pause-music', pause)
+    return () => window.removeEventListener('sm:pause-music', pause)
+  }, [])
+  if (!src) return null
+  return (
+    <div className="absolute top-3 right-3 z-30">
+      <audio ref={ref} src={src} preload="none" data-music onEnded={() => setOn(false)} />
+      <button onClick={() => setOn(!on)} className="h-10 pl-3 pr-4 rounded-full p-card shadow-md text-sm font-semibold flex items-center gap-2 max-w-[60vw]" aria-pressed={on} aria-label={on ? 'Pause music' : 'Play music'}>
+        <span className={on ? 'animate-pulse' : ''} aria-hidden>{on ? '❚❚' : '♪'}</span>
+        <span className="truncate">{music.title || (on ? 'Playing' : 'Play music')}</span>
+      </button>
+    </div>
   )
 }
 

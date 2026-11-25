@@ -59,3 +59,14 @@ Every external call, how it was tested and its status. Re-run commands are in RE
 | Brief's example: Birthday + Friendship Scrapbook + Our Soundtrack + Open When, finale from Soundtrack | built-in browser | 11 scenes in order, 6 duplicate openings/finales left out, 14 media slots listed, names filled in |
 | Insert Friendship Quiz after scene 3 in the editor, then Undo | built-in browser | inserted at the right place; undo restores 11 scenes |
 | Gallery at 375 px | built-in browser | no horizontal scroll; tray stacks |
+
+## Phase 6 — Studio (no external calls beyond B2 uploads)
+
+| Check | How | Result |
+| --- | --- | --- |
+| Music/background schema, lock hiding, blank canvas, version list/restore ownership, legacy switch (idempotent, freezes old link) | Vitest `tests/studio.test.ts` | pass (82/82 overall) |
+| Soundtrack (WAV) and scene background (JPEG) uploaded through the editor to B2 | built-in browser | saved; background renders; music plays after pressing the button, keeps playing into the next scene, volume 0.6, loop on |
+| Play whole surprise: phone and desktop | built-in browser | overlay above everything (after fix) |
+| Drag scene 10 to position 2; History → restore oldest; Undo | built-in browser | order changes; restore brings back the template order; undo restores music and dragged order |
+| Switch "Maya's Open When Letters" (published, single experience) to scenes | built-in browser | opens as Opening / The surprise / Finale |
+| Blank canvas from `/templates` | built-in browser | 3-scene draft, opens in the editor |

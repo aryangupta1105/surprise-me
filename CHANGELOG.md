@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-25 — Phase 6: Studio
+- Document format: optional `theme.music` (soundtrack) and per-scene `music` and `background` (photo + visibility). Additive; old documents stay valid. Locked scenes also withhold their music and background.
+- Player: photo backgrounds washed with the palette for readable text; a music button (no autoplay with sound) that follows scene changes and pauses while a voice note or video plays.
+- Editor: drag-and-drop scene order; soundtrack and scene music controls (upload/record/library, volume, loop, track name); background photo; **Play whole surprise** (full screen, phone or desktop width); **History** (last 30 drafts + published versions, restore as an undo-able edit).
+- `/templates`: **Start from a blank canvas**.
+- Older single-experience surprises: **Switch to scene editor** (`POST /api/surprises/:id/convert`; freezes what an existing link shows first).
+- Fix found while testing: the full-screen preview was covered by the site's top menu (now rendered at the top level of the page).
+
 ## 2026-11-25 — Phase 5: templates and merging
 - 10 starter templates as data (`src/templates/library.ts`): Birthday Celebration, Romantic Love Story, Friendship Scrapbook, Digital Memory Book, Mystery Treasure Hunt, Open When Letters, Interactive Friendship Quiz, Mystery Gift Reveal, Our Soundtrack, Time Capsule. Each has description, category, occasions, theme, scenes, transitions, what to personalise; required media is derived from its empty slots.
 - Merging (`src/engine/compose.ts`, run on the server by `POST /api/templates`): merges scene structures, keeps one opening and one finale (creator chooses), preserves each template's content, re-ids everything, applies the overall theme, keeps template colours only where compatible, softens flip/zoom when motion is gentle or off, lists missing media, refuses more than 30 scenes.
