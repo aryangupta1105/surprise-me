@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { experienceBlock } from '@/engine/convert'
 import { parseDoc, uid, type Scene, type SurpriseDoc } from '@/engine/doc'
 import { db } from '@/lib/db'
-import { AppError } from '@/lib/http'
+import { AppError, log } from '@/lib/http'
 import { EXPERIENCES, OCCASIONS, PALETTES, StudioInput, TONES, type ExperienceType, type StoredContent } from '@/lib/schemas'
 import type { Prisma } from '@/generated/prisma/client'
 import { askJson, claimGeneration, failGeneration, writeExperience } from './ai'
@@ -54,6 +54,7 @@ export async function extractBrief(userId: string, description: string) {
     return Brief.parse(out)
   } catch (err) {
     if (err instanceof AppError && err.status === 429) throw err
+    log('error', 'brief extraction failed', { error: String(err).slice(0, 500) })
     throw new AppError(502, 'We couldn’t read that description. Try again, or use Guided create.', 'extract_failed')
   }
 }
