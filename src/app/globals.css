@@ -1,0 +1,76 @@
+@import "tailwindcss";
+
+/* ---------- Design tokens ---------- */
+@theme {
+  --font-display: var(--font-fraunces), Georgia, serif;
+  --font-sans: var(--font-manrope), system-ui, sans-serif;
+  --font-hand: var(--font-caveat), cursive;
+
+  --color-ink: #2a1d2b;
+  --color-ink-soft: #6d5c6b;
+  --color-paper: #fff8f1;
+  --color-cream: #fdeedd;
+  --color-blush: #f7c9c4;
+  --color-rose: #e2557a;
+  --color-rose-deep: #b8345a;
+  --color-peach: #ffb38a;
+  --color-butter: #ffe08a;
+  --color-mint: #b9e4c9;
+  --color-sky: #a9d3f0;
+  --color-lilac: #cdb9f2;
+  --color-line: #ecdccd;
+
+  --radius-card: 1.5rem;
+  --radius-pill: 999px;
+  --shadow-soft: 0 1px 2px rgb(42 29 43 / 0.04), 0 8px 24px -8px rgb(42 29 43 / 0.14);
+  --shadow-lift: 0 2px 4px rgb(42 29 43 / 0.05), 0 22px 48px -16px rgb(42 29 43 / 0.28);
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+/* Paper grain, so large surfaces never look flat. */
+.grain::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.35;
+  z-index: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.16 0 0 0 0 0.11 0 0 0 0 0.17 0 0 0 .06 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ---------- Experience palettes (recipient side + previews) ---------- */
+[data-palette] {
+  background: var(--p-bg);
+  color: var(--p-ink);
+}
+[data-palette="sunrise"] { --p-bg: linear-gradient(160deg, #fff3e3 0%, #ffd9c2 55%, #ffb8a8 100%); --p-ink: #3b1f24; --p-accent: #e9573f; --p-soft: #fff7ef; --p-card: #fffaf5; }
+[data-palette="lagoon"] { --p-bg: linear-gradient(160deg, #e9fbf7 0%, #bfeee4 50%, #8fd3d8 100%); --p-ink: #10343a; --p-accent: #0f8b8d; --p-soft: #f2fffc; --p-card: #fbfffe; }
+[data-palette="midnight"] { --p-bg: radial-gradient(120% 90% at 20% 0%, #3b2b6b 0%, #1b1538 55%, #0e0b22 100%); --p-ink: #f3ecff; --p-accent: #ffcf6b; --p-soft: #2a2152; --p-card: #241c47; }
+[data-palette="blossom"] { --p-bg: linear-gradient(160deg, #fff0f4 0%, #ffd3df 55%, #f7b3c8 100%); --p-ink: #3d1528; --p-accent: #d63d74; --p-soft: #fff6f9; --p-card: #fffafc; }
+[data-palette="meadow"] { --p-bg: linear-gradient(160deg, #f7fbe8 0%, #dff0c4 55%, #bfe0a3 100%); --p-ink: #21330f; --p-accent: #4f8a1f; --p-soft: #fbfff2; --p-card: #fdfff8; }
+[data-palette="candy"] { --p-bg: linear-gradient(135deg, #fde7ff 0%, #ffe4cf 40%, #d9f1ff 100%); --p-ink: #2f1a3d; --p-accent: #9b4dff; --p-soft: #fff8ff; --p-card: #ffffff; }
+
+.p-card { background: var(--p-card); color: var(--p-ink); }
+.p-accent { color: var(--p-accent); }
+.p-btn { background: var(--p-accent); color: #fff; }
+[data-palette="midnight"] .p-btn { color: #1b1538; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
+
+:focus-visible { outline: 3px solid var(--color-rose); outline-offset: 3px; border-radius: 6px; }
+
+@keyframes float { 0%, 100% { transform: translateY(0) rotate(var(--r, 0deg)); } 50% { transform: translateY(-10px) rotate(var(--r, 0deg)); } }
+.float { animation: float 6s ease-in-out infinite; }
+@keyframes wiggle { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
+.wiggle:hover { animation: wiggle .5s ease-in-out infinite; }

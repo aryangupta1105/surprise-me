@@ -1,0 +1,185 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// One row per person. A guest is a User with isGuest = true; upgrading fills email and flips
+// isGuest on the same row, so drafts, surprises and connections never need migrating.
+// User.id is also the viaSocket user id (never the email).
+model User {
+  id          String   @id @default(cuid())
+  isGuest     Boolean  @default(true)
+  email       String?  @unique
+  name        String?
+  externalId  String?  @unique // id from the account provider, once upgraded
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  sessions    Session[]
+  surprises   Surprise[]
+  uploads     Upload[]
+  connections IntegrationConnection[]
+  reminders   CalendarReminder[]
+}
+
+model Session {
+  id         String   @id @default(cuid())
+  tokenHash  String   @unique // sha256 of the cookie value; the raw token is never stored
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+}
+
+enum SurpriseStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum GenerationStatus {
+  IDLE
+  PENDING
+  SUCCEEDED
+  FAILED
+}
+
+model Surprise {
+  id               String           @id @default(cuid())
+  ownerId          String
+  owner            User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  status           SurpriseStatus   @default(DRAFT)
+  occasion         String
+  experienceType   String?
+  recipientName    String
+  creatorName      String
+  title            String?
+  input            Json             // validated studio answers (StudioInput)
+  content          Json?            // validated experience JSON (ExperienceContent)
+  theme            Json?            // { palette, font, motion }
+  generationStatus GenerationStatus @default(IDLE)
+  generationError  String?
+
+  // Private link: hash for lookup, AES-GCM ciphertext so the creator can see and email it again.
+  linkTokenHash    String?          @unique
+  linkTokenEnc     String?
+  linkRevokedAt    DateTime?
+  linkExpiresAt    DateTime?
+  publishedAt      DateTime?
+  archivedAt       DateTime?
+
+  // Engagement: counts only, no recipient identity, IP or device data.
+  openCount        Int              @default(0)
+  lastOpenedAt     DateTime?
+  progress         Int              @default(0) // 0-100
+  completedAt      DateTime?
+
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  generations      AIGeneration[]
+  deliveries       Delivery[]
+  uploads          Upload[]
+  reminders        CalendarReminder[]
+
+  @@index([ownerId, status])
+}
+
+model AIGeneration {
+  id          String           @id @default(cuid())
+  surpriseId  String
+  surprise    Surprise         @relation(fields: [surpriseId], references: [id], onDelete: Cascade)
+  section     String?          // null = whole experience
+  status      GenerationStatus
+  model       String
+  threadId    String
+  error       String?
+  output      Json?
+  createdAt   DateTime         @default(now())
+
+  @@index([surpriseId, createdAt])
+}
+
+model Upload {
+  id          String    @id @default(cuid())
+  ownerId     String
+  owner       User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  surpriseId  String?
+  surprise    Surprise? @relation(fields: [surpriseId], references: [id], onDelete: Cascade)
+  mime        String
+  size        Int
+  data        Bytes     // ponytail: images in Postgres, move to object storage if volume grows
+  createdAt   DateTime  @default(now())
+
+  @@index([ownerId])
+}
+
+// A user's viaSocket connection to one app. authId is that user's credential reference: server only.
+model IntegrationConnection {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  app       String   // viaSocket app slug, e.g. "gmail", "google-calendar"
+  authId    String
+  label     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, app])
+}
+
+enum DeliveryStatus {
+  SCHEDULED
+  SENDING
+  SENT
+  FAILED
+  CANCELLED
+}
+
+model Delivery {
+  id             String         @id @default(cuid())
+  surpriseId     String
+  surprise       Surprise       @relation(fields: [surpriseId], references: [id], onDelete: Cascade)
+  recipientEmail String
+  subject        String
+  message        String
+  scheduledFor   DateTime       // now() for "send immediately"
+  timezone       String
+  status         DeliveryStatus @default(SCHEDULED)
+  attempts       Int            @default(0)
+  lastError      String?
+  sentAt         DateTime?
+  idempotencyKey String         @unique // client-supplied; a double-click cannot create two deliveries
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([status, scheduledFor])
+}
+
+enum ReminderStatus {
+  CREATED
+  FAILED
+}
+
+model CalendarReminder {
+  id            String         @id @default(cuid())
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  surpriseId    String?
+  surprise      Surprise?      @relation(fields: [surpriseId], references: [id], onDelete: SetNull)
+  title         String
+  occasionDate  DateTime
+  remindMinutes Int            // minutes before the event
+  timezone      String
+  status        ReminderStatus
+  eventId       String?
+  eventLink     String?
+  error         String?
+  createdAt     DateTime       @default(now())
+}
