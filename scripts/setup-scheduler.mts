@@ -17,6 +17,7 @@ const flows = (await user.listFlows()) as { id: string; title?: string; status?:
 let scriptId = flows.find((f) => f.title === TITLE && f.status !== 'deleted')?.id
 if (!scriptId) scriptId = (await user.createFlow({ title: TITLE, description: 'Sends due SurpriseMe emails every 5 minutes.' })).scriptId
 console.log('flow', scriptId ? 'ready' : 'missing')
+if (!process.argv.includes('--pause')) await user.setFlowStatus(scriptId, 1) // a paused flow can't be saved
 
 await user.setTrigger(scriptId, { triggerType: 'cron', cronStatement: '*/5 * * * *', timezone: 'UTC' })
 const code = `
@@ -31,7 +32,4 @@ console.log('status:', flow.status, '| trigger:', JSON.stringify(flow.trigger).s
 if (process.argv.includes('--pause')) {
   await user.setFlowStatus(scriptId, 2)
   console.log('paused (APP_URL is not public yet)')
-} else {
-  await user.setFlowStatus(scriptId, 1)
-  console.log('running')
 }
