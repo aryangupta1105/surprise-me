@@ -100,7 +100,7 @@ export function Studio() {
     }
     const { id } = await api<{ id: string }>('/api/surprises', { body: clean(d) })
     setDraftId(id)
-    router.replace(`/create?d=${id}`, { scroll: false })
+    router.replace(`/create/guided?d=${id}`, { scroll: false })
     return id
   }
 

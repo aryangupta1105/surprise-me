@@ -98,7 +98,7 @@ export function Dashboard() {
                         {r.nextDelivery && <Chip tone="warn">⏰ {date(r.nextDelivery)}</Chip>}
                       </div>
                     </div>
-                    <Link href={r.generationStatus === 'SUCCEEDED' ? `/studio/${r.id}` : `/create?d=${r.id}`} className="font-display text-xl mt-4 hover:text-rose">{r.title ?? `A surprise for ${r.recipientName}`}</Link>
+                    <Link href={r.generationStatus === 'SUCCEEDED' ? `/studio/${r.id}` : `/create/guided?d=${r.id}`} className="font-display text-xl mt-4 hover:text-rose">{r.title ?? `A surprise for ${r.recipientName}`}</Link>
                     <p className="text-sm text-ink-soft mt-1">For {r.recipientName} · {OCCASION_INFO[r.occasion]?.label}{exp ? ` · ${exp.label}` : ''}</p>
                     <p className="text-xs text-ink-soft mt-1">Created {date(r.createdAt)}</p>
                     {r.status === 'PUBLISHED' && (
@@ -108,7 +108,7 @@ export function Dashboard() {
                       </div>
                     )}
                     <div className="mt-auto pt-5 flex flex-wrap gap-1.5">
-                      <Button size="sm" variant="secondary" href={r.generationStatus === 'SUCCEEDED' ? `/studio/${r.id}` : `/create?d=${r.id}`}>Edit</Button>
+                      <Button size="sm" variant="secondary" href={r.generationStatus === 'SUCCEEDED' ? `/studio/${r.id}` : `/create/guided?d=${r.id}`}>Edit</Button>
                       {live && <Button size="sm" variant="ghost" onClick={() => navigator.clipboard.writeText(r.url!).then(() => toast('Link copied', 'good'))}>Copy link</Button>}
                       {live && <Button size="sm" variant="ghost" onClick={() => confirm('Turn off this link?') && act(() => api(`/api/surprises/${r.id}/revoke`, { body: {} }), 'Link turned off')}>Revoke</Button>}
                       {r.nextDelivery && <Button size="sm" variant="ghost" href={`/studio/${r.id}?tab=share`}>Reschedule</Button>}
@@ -128,7 +128,7 @@ export function Dashboard() {
         <h2 className="font-display text-3xl">Start from a template</h2>
         <div className="mt-6 grid grid-cols-2 lg:grid-cols-3 gap-4">
           {EXPERIENCES.map((e) => (
-            <Link key={e} href={`/create?exp=${e}`} className="rounded-[var(--radius-card)] bg-white ring-1 ring-line p-5 hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)] transition">
+            <Link key={e} href={`/create/guided?exp=${e}`} className="rounded-[var(--radius-card)] bg-white ring-1 ring-line p-5 hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)] transition">
               <span className="text-2xl" aria-hidden>{EXPERIENCE_INFO[e].emoji}</span>
               <p className="font-semibold mt-2">{EXPERIENCE_INFO[e].label}</p>
               <p className="text-sm text-ink-soft">{EXPERIENCE_INFO[e].best}</p>

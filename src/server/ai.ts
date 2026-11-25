@@ -75,7 +75,7 @@ const jsonSchemaFor = (name: string, schema: z.ZodType) => ({
   strict: true,
 })
 
-async function askJson(userId: string, threadId: string, prompt: string, message: string, schema: z.ZodType, name: string) {
+export async function askJson(userId: string, threadId: string, prompt: string, message: string, schema: z.ZodType, name: string) {
   const reply = await viasocket()
     .user(userId)
     .ai.send({
@@ -91,55 +91,62 @@ async function askJson(userId: string, threadId: string, prompt: string, message
   return schema.parse(content) // malformed or incomplete output throws here
 }
 
-/** Generates the whole experience for a surprise; retries once on malformed output. Records every attempt. */
+/** Claims a surprise for generation atomically, so a double-click cannot start two runs. */
+export async function claimGeneration(surpriseId: string, ownerId: string) {
+  const claimed = await db.surprise.updateMany({
+    where: { id: surpriseId, ownerId, generationStatus: { not: 'PENDING' } },
+    data: { generationStatus: 'PENDING', generationError: null },
+  })
+  if (!claimed.count) throw new AppError(409, 'A generation is already running for this surprise.', 'in_progress')
+}
+
+export async function failGeneration(surpriseId: string, message: string) {
+  await db.surprise.update({ where: { id: surpriseId }, data: { generationStatus: 'FAILED', generationError: message } })
+  return new AppError(502, `We couldn't write your surprise: ${message}`, 'generation_failed')
+}
+
+/**
+ * Writes one experience (validated StoredContent) from the creator's data; retries once on malformed output,
+ * never on a refusal (4xx). Every attempt is recorded. Throws an Error carrying the last reason.
+ */
+export async function writeExperience(surpriseId: string, ownerId: string, input: StudioInput, type: ExperienceType) {
+  let lastError = 'unknown error'
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const threadId = `gen-${surpriseId}-${type}-${Date.now()}`
+    try {
+      const output = await askJson(ownerId, threadId, systemPrompt(type, input), creatorData(input), AI_SCHEMAS[type], type)
+      const content = StoredContent.parse({ ...(output as object), type })
+      await db.aIGeneration.create({ data: { surpriseId, section: type, status: 'SUCCEEDED', model: AI_MODEL.model, threadId, output: content } })
+      return content
+    } catch (err) {
+      lastError = err instanceof z.ZodError ? 'The AI answer did not match the expected shape.' : String((err as Error).message)
+      log('warn', 'ai generation attempt failed', { surpriseId, type, attempt, error: String(err) })
+      await db.aIGeneration.create({ data: { surpriseId, section: type, status: 'FAILED', model: AI_MODEL.model, threadId, error: lastError.slice(0, 500) } })
+      // A refusal from viaSocket (no credits, bad secret) will not get better on retry.
+      if ((err as { status?: number }).status && (err as { status: number }).status < 500) break
+    }
+  }
+  throw new Error(lastError)
+}
+
+/** Guided flow: generates the single chosen experience and stores it as the surprise's content. */
 export async function generateExperience(surpriseId: string, ownerId: string) {
   const surprise = await db.surprise.findFirst({ where: { id: surpriseId, ownerId } })
   if (!surprise) throw new AppError(404, 'Surprise not found.')
   const input = StudioInput.parse(surprise.input)
   const type = input.experienceType
   if (!type) throw new AppError(400, 'Choose an experience first.')
-
-  // Claim the generation atomically so a double-click cannot start two runs.
-  const claimed = await db.surprise.updateMany({
-    where: { id: surpriseId, ownerId, generationStatus: { not: 'PENDING' } },
-    data: { generationStatus: 'PENDING', generationError: null },
-  })
-  if (!claimed.count) throw new AppError(409, 'A generation is already running for this surprise.', 'in_progress')
-
-  let lastError = 'unknown error'
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-    const threadId = `gen-${surpriseId}-${Date.now()}`
-    try {
-      const output = await askJson(ownerId, threadId, systemPrompt(type, input), creatorData(input), AI_SCHEMAS[type], type)
-      const content = StoredContent.parse({ ...(output as object), type })
-      await db.$transaction([
-        db.aIGeneration.create({
-          data: { surpriseId, status: 'SUCCEEDED', model: AI_MODEL.model, threadId, output: content },
-        }),
-        db.surprise.update({
-          where: { id: surpriseId },
-          data: {
-            content,
-            title: content.title,
-            experienceType: type,
-            theme: { palette: content.palette, motion: 'full' },
-            generationStatus: 'SUCCEEDED',
-          },
-        }),
-      ])
-      return content
-    } catch (err) {
-      lastError = err instanceof z.ZodError ? 'The AI answer did not match the expected shape.' : String((err as Error).message)
-      log('warn', 'ai generation attempt failed', { surpriseId, attempt, error: String(err) })
-      await db.aIGeneration.create({
-        data: { surpriseId, status: 'FAILED', model: AI_MODEL.model, threadId, error: lastError.slice(0, 500) },
-      })
-      // A refusal from viaSocket (no credits, bad secret) will not get better on retry.
-      if ((err as { status?: number }).status && (err as { status: number }).status < 500) break
-    }
+  await claimGeneration(surpriseId, ownerId)
+  try {
+    const content = await writeExperience(surpriseId, ownerId, input, type)
+    await db.surprise.update({
+      where: { id: surpriseId },
+      data: { content, title: content.title, experienceType: type, theme: { palette: content.palette, motion: 'full' }, generationStatus: 'SUCCEEDED' },
+    })
+    return content
+  } catch (err) {
+    throw await failGeneration(surpriseId, (err as Error).message)
   }
-  await db.surprise.update({ where: { id: surpriseId }, data: { generationStatus: 'FAILED', generationError: lastError } })
-  throw new AppError(502, `We couldn't write your surprise: ${lastError}`, 'generation_failed')
 }
 
 /** Rewrites one item (a clue, card, letter...) and returns it; the caller saves it. */

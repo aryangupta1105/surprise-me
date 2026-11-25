@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { parseBody, route } from '@/lib/http'
 import { StoredContent, StudioInput, Theme } from '@/lib/schemas'
 import { requireUser as me } from '@/lib/session'
-import { ownedSurprise, remove, saveContent, shareUrl, updateInput } from '@/server/surprises'
+import { draftDoc, ownedSurprise, remove, saveContent, shareUrl, updateInput } from '@/server/surprises'
 import { db } from '@/lib/db'
 
 type P = { id: string }
@@ -16,7 +16,8 @@ export const GET = route<P>(async (_req, { params }) => {
     db.calendarReminder.findMany({ where: { surpriseId: id }, orderBy: { createdAt: 'desc' } }),
   ])
   const { linkTokenHash: _h, linkTokenEnc, ...rest } = s
-  return { surprise: { ...rest, url: shareUrl({ linkTokenEnc, linkRevokedAt: s.linkRevokedAt }) }, deliveries, reminders }
+  const doc = s.draftVersionId ? await draftDoc(s) : null
+  return { surprise: { ...rest, url: shareUrl({ linkTokenEnc, linkRevokedAt: s.linkRevokedAt }) }, doc, deliveries, reminders }
 })
 
 const Patch = z.union([

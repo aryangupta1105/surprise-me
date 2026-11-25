@@ -2,7 +2,8 @@
 
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
-import { Experience } from '@/components/experiences/Experience'
+import { legacyToDoc } from '@/engine/convert'
+import { Player } from '@/engine/player/Player'
 import { Button, Card, Chip, ErrorState, api, cx, useToast } from '@/components/ui'
 import { EXPERIENCE_INFO, PALETTE_INFO } from '@/lib/catalog'
 import { MOTION, PALETTES, StoredContent, type Theme } from '@/lib/schemas'
@@ -108,13 +109,16 @@ export function StudioEditor({ initial, isGuest }: { initial: EditorSurprise; is
         {s.generationError && <div className="mt-6"><ErrorState message={s.generationError} /></div>}
         <div className="mt-6 flex gap-3">
           <Button onClick={regenerateAll} loading={generating}>Write it now ✨</Button>
-          <Button variant="secondary" href={`/create?d=${s.id}`}>Edit details</Button>
+          <Button variant="secondary" href={`/create/guided?d=${s.id}`}>Edit details</Button>
         </div>
       </div>
     )
 
-  const preview = (
-    <Experience key={`${previewKey}-${content.type}`} content={content} theme={theme} photo={(id) => (id ? `/api/uploads/${id}` : null)} preview />
+  const previewDoc = validation?.success ? legacyToDoc(validation.data, theme) : null
+  const preview = previewDoc ? (
+    <Player key={previewKey} doc={previewDoc} photo={(id) => (id ? `/api/uploads/${id}` : null)} preview />
+  ) : (
+    <div className="min-h-[640px] grid place-items-center p-8 text-center text-ink-soft bg-white">Fix the highlighted fields to see the preview.</div>
   )
 
   return (

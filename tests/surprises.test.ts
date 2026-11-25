@@ -18,8 +18,9 @@ describe('publishing and private links', () => {
     expect(row.linkTokenHash).toBe(sha256(token))
     expect(row.linkTokenEnc).not.toContain(token)
     const open = await openByToken(token)
-    expect(open?.content.title).toBe('For Maya')
-    expect(Object.keys(open!)).toEqual(['id', 'content', 'theme', 'recipientName', 'creatorName']) // no owner or inputs
+    expect(open?.doc.scenes[0].blocks[0].props.text).toBe('For Maya')
+    expect(open?.doc.scenes.map((s) => s.kind)).toEqual(['opening', 'game', 'finale'])
+    expect(Object.keys(open!)).toEqual(['id', 'doc', 'recipientName', 'creatorName']) // no owner or inputs
   })
 
   it('refuses to publish without content, or for another user', async () => {
@@ -123,12 +124,44 @@ describe('guest sessions and accounts', () => {
   })
 })
 
-describe('open-when scheduled unlocking', () => {
-  it('sends locked letters without their text', async () => {
-    const { withLockedLettersHidden } = await import('@/server/surprises')
+describe('time-locked content', () => {
+  it('withholds locked scenes and locked letters on the server', async () => {
+    const { withLockedContentHidden } = await import('@/server/surprises')
     const future = new Date(Date.now() + 864e5).toISOString()
-    const c = { type: 'open_when', title: 't', subtitle: 's', intro: 'i', palette: 'candy', closing: { title: 'a', message: 'b' }, letters: [{ when: 'sad', emoji: '💌', letter: 'secret', unlockAt: future }, { when: 'happy', emoji: '💌', letter: 'open' }] } as const
-    const out = withLockedLettersHidden(c as never) as unknown as { letters: { letter: string }[] }
-    expect(out.letters.map((l) => l.letter)).toEqual(['', 'open'])
+    const doc = {
+      version: 1 as const, theme: { palette: 'candy' as const, motion: 'full' as const },
+      scenes: [
+        { id: 'a', kind: 'content' as const, title: '', transition: 'fade' as const, blocks: [{ id: 'b1', type: 'open_when' as const, props: { letters: [{ when: 'sad', emoji: '💌', letter: 'secret', unlockAt: future }, { when: 'happy', emoji: '💌', letter: 'open' }] } }] },
+        { id: 'c', kind: 'finale' as const, title: '', transition: 'fade' as const, unlockAt: future, blocks: [{ id: 'b2', type: 'paragraph' as const, props: { text: 'later' } }] },
+      ],
+    }
+    const out = withLockedContentHidden(doc)
+    expect((out.scenes[0].blocks[0].props.letters as { letter: string }[]).map((l) => l.letter)).toEqual(['', 'open'])
+    expect(out.scenes[1].blocks).toEqual([])
+  })
+})
+
+describe('published versions', () => {
+  it('recipients see the frozen version until the creator publishes again', async () => {
+    const u = await makeUser()
+    const s = await makeSurprise(u.id, true)
+    const t = tokenOf((await publish(s.id, u.id)).url)
+    await saveContent(s.id, u.id, { ...cardsOutput, title: 'Edited title', type: 'cards' } as never)
+    expect((await openByToken(t))?.doc.scenes[0].blocks[0].props.text).toBe('For Maya')
+    const again = tokenOf((await publish(s.id, u.id)).url)
+    expect(again).toBe(t)
+    expect((await openByToken(t))?.doc.scenes[0].blocks[0].props.text).toBe('Edited title')
+    expect(await db.surpriseVersion.count({ where: { surpriseId: s.id } })).toBe(2)
+  })
+
+  it('surprises published before versions existed still open (converted on the fly)', async () => {
+    const u = await makeUser()
+    const s = await makeSurprise(u.id, true)
+    const t = tokenOf((await publish(s.id, u.id)).url)
+    await db.surprise.update({ where: { id: s.id }, data: { publishedVersionId: null } })
+    expect((await openByToken(t))?.doc.scenes).toHaveLength(3)
+    // and the first edit freezes what they saw instead of changing it under them
+    await saveContent(s.id, u.id, { ...cardsOutput, title: 'Edited', type: 'cards' } as never)
+    expect((await openByToken(t))?.doc.scenes[0].blocks[0].props.text).toBe('For Maya')
   })
 })

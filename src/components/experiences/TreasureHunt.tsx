@@ -3,7 +3,7 @@
 import { AnimatePresence, motion, useAnimation } from 'framer-motion'
 import { useState } from 'react'
 import type { StoredContent } from '@/lib/schemas'
-import { Progress, type ExpProps } from './Experience'
+import { Progress, type ExpProps } from '@/engine/player/shared'
 
 type Content = Extract<StoredContent, { type: 'treasure_hunt' }>
 

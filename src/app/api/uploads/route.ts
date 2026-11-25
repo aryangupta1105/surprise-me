@@ -1,31 +1,19 @@
-import { db } from '@/lib/db'
-import { AppError, rateLimit, route } from '@/lib/http'
-import { ensureUser } from '@/lib/session'
+import { z } from 'zod'
+import { parseBody, rateLimit, route } from '@/lib/http'
+import { ensureUser, requireUser } from '@/lib/session'
+import { KINDS, StartInput, list, start } from '@/server/media'
 
-const MAX_BYTES = 3 * 1024 * 1024
-// Content is sniffed from magic bytes: the browser's declared type is not trusted.
-function sniff(b: Uint8Array) {
-  if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return 'image/jpeg'
-  if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return 'image/png'
-  if (String.fromCharCode(...b.slice(0, 4)) === 'RIFF' && String.fromCharCode(...b.slice(8, 12)) === 'WEBP') return 'image/webp'
-  if (String.fromCharCode(...b.slice(0, 3)) === 'GIF') return 'image/gif'
-  return null
-}
-
+/** Reserve an upload; the browser then sends the file to the returned URL and calls /complete. */
 export const POST = route(async (req) => {
-  rateLimit(req, 'upload', 30, 60_000)
-  const form = await req.formData()
-  const file = form.get('file')
-  const surpriseId = String(form.get('surpriseId') ?? '')
-  if (!(file instanceof File)) throw new AppError(400, 'No file received.')
-  if (file.size > MAX_BYTES) throw new AppError(413, 'Photos must be under 3 MB.')
-  const bytes = new Uint8Array(await file.arrayBuffer())
-  const mime = sniff(bytes)
-  if (!mime) throw new AppError(415, 'Only JPEG, PNG, WebP or GIF photos are allowed.')
+  rateLimit(req, 'upload', 40, 60_000)
+  const body = await parseBody(req, StartInput)
   const user = await ensureUser()
-  if (!(await db.surprise.findFirst({ where: { id: surpriseId, ownerId: user.id } }))) throw new AppError(404, 'Surprise not found.')
-  const count = await db.upload.count({ where: { surpriseId } })
-  if (count >= 12) throw new AppError(400, 'A surprise can hold up to 12 photos.')
-  const up = await db.upload.create({ data: { ownerId: user.id, surpriseId, mime, size: bytes.length, data: bytes } })
-  return { id: up.id }
+  return start(user.id, body)
+})
+
+/** The surprise's media library. */
+export const GET = route(async (req) => {
+  const user = await requireUser()
+  const q = z.object({ surpriseId: z.string().max(40), kind: z.enum(KINDS).optional() }).parse(Object.fromEntries(req.nextUrl.searchParams))
+  return { media: await list(user.id, q.surpriseId, q.kind) }
 })

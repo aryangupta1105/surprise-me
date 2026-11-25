@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion'
 import { useRef } from 'react'
 import type { StoredContent } from '@/lib/schemas'
-import type { ExpProps } from './Experience'
+import type { ExpProps } from '@/engine/player/shared'
 
 type Content = Extract<StoredContent, { type: 'memory_journey' }>
 

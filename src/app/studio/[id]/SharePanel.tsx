@@ -50,7 +50,7 @@ export function SharePanel({ s, setS, dirty, save, isGuest }: { s: EditorSurpris
       if (dirty && !(await save())) return
       const { url } = await api<{ url: string }>(`/api/surprises/${s.id}/publish`, { body: { rotate } })
       setS((x) => ({ ...x, url, status: 'PUBLISHED', linkRevokedAt: null }))
-      toast(rotate ? 'New link created — the old one no longer works' : 'Published! 🎉', 'good')
+      toast(rotate ? 'New link created — the old one no longer works' : live ? 'Changes published — same link' : 'Published! 🎉', 'good')
     })
 
   const revoke = () =>
@@ -83,10 +83,11 @@ export function SharePanel({ s, setS, dirty, save, isGuest }: { s: EditorSurpris
                 {typeof navigator !== 'undefined' && 'share' in navigator && (
                   <Button size="sm" variant="secondary" onClick={() => navigator.share({ title: 'A surprise for you', url: s.url! }).catch(() => {})}>Share…</Button>
                 )}
+                <Button size="sm" onClick={() => publish(false)} loading={busy === 'publish'}>Publish changes</Button>
                 <Button size="sm" variant="ghost" onClick={() => publish(true)} loading={busy === 'rotate'}>New link</Button>
                 <Button size="sm" variant="danger" onClick={revoke} loading={busy === 'revoke'}>Turn off link</Button>
               </div>
-              {dirty && <p className="text-sm text-[#8a5a00] mt-4">You have unsaved edits — publish again to update what they see.</p>}
+              <p className="text-xs text-ink-soft mt-4">They see the version you last published. After editing, click <b>Publish changes</b> — the link stays the same.</p>
             </>
           ) : (
             <>

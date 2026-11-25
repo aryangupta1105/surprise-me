@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useState } from 'react'
 import type { StoredContent } from '@/lib/schemas'
-import type { ExpProps } from './Experience'
+import type { ExpProps } from '@/engine/player/shared'
 
 type Content = Extract<StoredContent, { type: 'open_when' }>
 

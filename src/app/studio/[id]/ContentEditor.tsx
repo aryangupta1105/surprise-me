@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import type { core } from 'zod'
+import { MediaInput } from '@/components/MediaInput'
 import { Button, Card, Field, Input, Textarea, api, useToast } from '@/components/ui'
 import { SECTION_LISTS, type StoredContent } from '@/lib/schemas'
 
@@ -71,7 +72,7 @@ export function ContentEditor({ surpriseId, content, onChange, issues }: { surpr
             </Field>
             <Field label="Gift title">{(id) => <Input id={id} value={content.gift.title} onChange={(e) => set({ gift: { ...content.gift, title: e.target.value } })} />}</Field>
             <Field label="Gift message">{(id) => <Textarea id={id} rows={4} value={content.gift.message} onChange={(e) => set({ gift: { ...content.gift, message: e.target.value } })} />}</Field>
-            <Field label="Gift photo" optional>{() => <PhotoInput surpriseId={surpriseId} value={content.giftPhotoId} onChange={(giftPhotoId) => set({ giftPhotoId })} />}</Field>
+            <Field label="Gift photo" optional>{() => <MediaInput kind="image" surpriseId={surpriseId} value={content.giftPhotoId} onChange={(giftPhotoId) => set({ giftPhotoId })} />}</Field>
           </>
         )}
         {content.type === 'quiz' && (
@@ -151,7 +152,7 @@ function ItemCard({ index, surpriseId, type, item, onChange, onRemove, error }: 
               const v = item[f.key]
               if (f.kind === 'list')
                 return <Input id={id} value={((v as string[]) ?? []).join(', ')} onChange={(e) => onChange({ [f.key]: e.target.value.split(',').map((x) => x.trim()).filter(Boolean).slice(0, 6) })} />
-              if (f.kind === 'photo') return <PhotoInput surpriseId={surpriseId} value={v as string | undefined} onChange={(photoId) => onChange({ photoId })} />
+              if (f.kind === 'photo') return <MediaInput kind="image" surpriseId={surpriseId} value={v as string | undefined} onChange={(photoId) => onChange({ photoId })} />
               if (f.kind === 'datetime')
                 return <Input id={id} type="datetime-local" value={toLocalInput(v as string | undefined)} onChange={(e) => onChange({ unlockAt: e.target.value ? new Date(e.target.value).toISOString() : undefined })} />
               if (f.kind === 'options') {
@@ -173,38 +174,5 @@ function ItemCard({ index, surpriseId, type, item, onChange, onRemove, error }: 
         ))}
       </div>
     </Card>
-  )
-}
-
-function PhotoInput({ surpriseId, value, onChange }: { surpriseId: string; value?: string; onChange: (id: string | undefined) => void }) {
-  const toast = useToast()
-  const [busy, setBusy] = useState(false)
-  const upload = async (file: File) => {
-    if (file.size > 3 * 1024 * 1024) return toast('Photos must be under 3 MB.', 'bad')
-    setBusy(true)
-    try {
-      const fd = new FormData()
-      fd.append('file', file)
-      fd.append('surpriseId', surpriseId)
-      const { id } = await api<{ id: string }>('/api/uploads', { body: fd })
-      onChange(id)
-    } catch (e) {
-      toast((e as Error).message, 'bad')
-    } finally {
-      setBusy(false)
-    }
-  }
-  return (
-    <div className="flex items-center gap-3">
-      {value && (
-        // eslint-disable-next-line @next/next/no-img-element -- private, auth-checked bytes
-        <img src={`/api/uploads/${value}`} alt="" className="size-16 rounded-xl object-cover ring-1 ring-line" />
-      )}
-      <label className="inline-flex h-10 items-center px-4 rounded-full bg-white ring-1 ring-line text-sm font-semibold cursor-pointer hover:ring-ink/30">
-        {busy ? 'Uploading…' : value ? 'Replace photo' : 'Add a photo'}
-        <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="sr-only" disabled={busy} onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
-      </label>
-      {value && <button className="text-sm text-ink-soft hover:text-ink" onClick={() => onChange(undefined)}>Remove</button>}
-    </div>
   )
 }

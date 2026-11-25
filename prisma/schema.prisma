@@ -4,7 +4,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
 }
 
 // One row per person. A guest is a User with isGuest = true; upgrading fills email and flips
@@ -83,6 +83,11 @@ model Surprise {
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 
+  // Versioned scene documents (src/engine/doc.ts). Recipients see the frozen published version.
+  versions           SurpriseVersion[]
+  publishedVersionId String?
+  draftVersionId     String? // the document being edited; null = legacy single-experience content
+
   generations      AIGeneration[]
   deliveries       Delivery[]
   uploads          Upload[]
@@ -112,12 +117,18 @@ model Upload {
   owner       User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   surpriseId  String?
   surprise    Surprise? @relation(fields: [surpriseId], references: [id], onDelete: Cascade)
+  kind        String    @default("image") // image | audio | video
+  status      String    @default("ready") // pending until the browser's direct upload is verified
+  name        String    @default("")
   mime        String
   size        Int
-  data        Bytes     // ponytail: images in Postgres, move to object storage if volume grows
+  storageKey  String?   // object in R2 (or DATA_DIR/media locally); may be shared by duplicated surprises
+  data        Bytes?    // legacy photos stored in the database before Phase 4
   createdAt   DateTime  @default(now())
 
   @@index([ownerId])
+  @@index([surpriseId, kind])
+  @@index([storageKey])
 }
 
 // A user's viaSocket connection to one app. authId is that user's credential reference: server only.
@@ -182,4 +193,17 @@ model CalendarReminder {
   eventLink     String?
   error         String?
   createdAt     DateTime       @default(now())
+}
+
+// One immutable snapshot of a surprise's scene document. Publishing points Surprise.publishedVersionId at one;
+// later phases add autosave/undo history on the same table.
+model SurpriseVersion {
+  id         String   @id @default(cuid())
+  surpriseId String
+  surprise   Surprise @relation(fields: [surpriseId], references: [id], onDelete: Cascade)
+  doc        Json
+  source     String   // publish | autosave | ai | template | manual | legacy
+  createdAt  DateTime @default(now())
+
+  @@index([surpriseId, createdAt])
 }

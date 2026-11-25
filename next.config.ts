@@ -4,11 +4,11 @@ const security = [
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'Referrer-Policy', value: 'no-referrer' }, // private links never leak via Referer
   { key: 'X-Frame-Options', value: 'DENY' },
-  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+  { key: 'Permissions-Policy', value: 'camera=(), microphone=(self), geolocation=()' },
 ]
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ['@prisma/adapter-pg', 'pg'],
+  serverExternalPackages: ['@libsql/client', '@prisma/adapter-libsql'],
   turbopack: { rules: { '*.css': { loaders: ['@tailwindcss/turbopack'], as: '*.css' } } },
   async headers() {
     return [

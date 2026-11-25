@@ -3,7 +3,8 @@ import { notFound } from 'next/navigation'
 import { Nav } from '@/components/site/Nav'
 import { db } from '@/lib/db'
 import { currentUser } from '@/lib/session'
-import { shareUrl } from '@/server/surprises'
+import { draftDoc, shareUrl } from '@/server/surprises'
+import { DocStudio } from './DocStudio'
 import { StudioEditor, type EditorSurprise } from './StudioEditor'
 
 export const metadata: Metadata = { title: 'Your surprise', robots: { index: false } }
@@ -36,7 +37,11 @@ export default async function StudioPage({ params }: { params: Promise<{ id: str
     <div className="grain relative min-h-dvh">
       <Nav />
       <main className="relative z-10">
-        <StudioEditor initial={surprise} isGuest={user.isGuest} />
+        {s.draftVersionId ? (
+          <DocStudio initial={surprise} initialDoc={await draftDoc(s)} isGuest={user.isGuest} />
+        ) : (
+          <StudioEditor initial={surprise} isGuest={user.isGuest} />
+        )}
       </main>
     </div>
   )

@@ -18,5 +18,5 @@ export default async function RecipientPage({ params }: { params: Promise<{ toke
       </main>
     )
   // Only recipient-safe fields cross to the client: no ids, owner data or creator inputs.
-  return <RecipientView token={token} content={s.content} theme={s.theme} />
+  return <RecipientView token={token} doc={s.doc} />
 }

@@ -4,7 +4,10 @@ import { decrypt, encrypt, randomToken, sha256 } from '@/lib/crypto'
 import { env } from '@/lib/env'
 import { AppError } from '@/lib/http'
 import { StoredContent, StudioInput, Theme } from '@/lib/schemas'
+import { legacyToDoc } from '@/engine/convert'
+import { parseDoc, type SurpriseDoc } from '@/engine/doc'
 import type { Prisma } from '@/generated/prisma/client'
+import { deleteMedia } from './media'
 
 /** Every creator-side read/write goes through this: ownership is checked on the server, never by URL. */
 export async function ownedSurprise(id: string, ownerId: string) {
@@ -44,6 +47,11 @@ export async function saveContent(id: string, ownerId: string, content: StoredCo
   const s = await ownedSurprise(id, ownerId)
   if (s.content && (s.content as { type?: string }).type !== content.type)
     throw new AppError(400, 'Experience type cannot change while editing; regenerate instead.')
+  // Published before versions existed: freeze what recipients see now, before this edit changes it.
+  if (s.status === 'PUBLISHED' && !s.publishedVersionId && s.content) {
+    const v = await db.surpriseVersion.create({ data: { surpriseId: id, doc: (await draftDoc(s)) as Prisma.InputJsonValue, source: 'legacy' } })
+    await db.surprise.update({ where: { id }, data: { publishedVersionId: v.id } })
+  }
   return db.surprise.update({
     where: { id },
     data: { content, title: content.title, ...(theme ? { theme } : {}) },
@@ -52,15 +60,47 @@ export async function saveContent(id: string, ownerId: string, content: StoredCo
 
 const linkFor = (token: string) => `${env.APP_URL}/s/${token}`
 
-/** Publishes (or re-issues) the private link. Re-issuing revokes the previous link. */
+/** The scene document being edited: the draft version when there is one, else derived from legacy content. */
+export async function draftDoc(s: { content: unknown; theme: unknown; draftVersionId?: string | null }): Promise<SurpriseDoc> {
+  if (s.draftVersionId) {
+    const v = await db.surpriseVersion.findUnique({ where: { id: s.draftVersionId } })
+    if (v) return parseDoc(v.doc)
+  }
+  return legacyDraftDoc(s)
+}
+
+const KEEP_DRAFT_VERSIONS = 30
+
+/** Saves a new draft version (validated) and prunes old unpublished ones. */
+export async function saveDraftDoc(surpriseId: string, ownerId: string, doc: unknown, source: 'ai' | 'manual' | 'template' | 'autosave') {
+  const s = await ownedSurprise(surpriseId, ownerId)
+  const v = await db.surpriseVersion.create({ data: { surpriseId, doc: parseDoc(doc) as Prisma.InputJsonValue, source } })
+  await db.surprise.update({ where: { id: surpriseId }, data: { draftVersionId: v.id } })
+  const old = await db.surpriseVersion.findMany({
+    where: { surpriseId, id: { notIn: [v.id, s.publishedVersionId ?? ''] }, source: { not: 'publish' } },
+    orderBy: { createdAt: 'desc' }, skip: KEEP_DRAFT_VERSIONS - 1, select: { id: true },
+  })
+  if (old.length) await db.surpriseVersion.deleteMany({ where: { id: { in: old.map((o) => o.id) } } })
+  return v
+}
+
+function legacyDraftDoc(s: { content: unknown; theme: unknown }): SurpriseDoc {
+  if (!s.content) throw new AppError(400, 'Generate and review the surprise before publishing.')
+  const content = StoredContent.parse(s.content)
+  return legacyToDoc(content, Theme.partial().parse(s.theme ?? {}))
+}
+
+/**
+ * Publishes the current draft as a frozen version (recipients never see half-finished edits) and makes sure there is
+ * a private link. Publishing again updates what recipients see and keeps the link; `rotate` issues a new link.
+ */
 export async function publish(id: string, ownerId: string, opts: { expiresAt?: Date; rotate?: boolean } = {}) {
   const s = await ownedSurprise(id, ownerId)
-  if (!s.content) throw new AppError(400, 'Generate and review the surprise before publishing.')
-  StoredContent.parse(s.content)
+  const version = await db.surpriseVersion.create({ data: { surpriseId: id, doc: (await draftDoc(s)) as Prisma.InputJsonValue, source: 'publish' } })
   if (s.linkTokenEnc && !s.linkRevokedAt && !opts.rotate) {
     await db.surprise.update({
       where: { id },
-      data: { status: 'PUBLISHED', linkExpiresAt: opts.expiresAt ?? s.linkExpiresAt },
+      data: { status: 'PUBLISHED', publishedVersionId: version.id, linkExpiresAt: opts.expiresAt ?? s.linkExpiresAt },
     })
     return { url: linkFor(decrypt(s.linkTokenEnc)) }
   }
@@ -69,6 +109,7 @@ export async function publish(id: string, ownerId: string, opts: { expiresAt?: D
     where: { id },
     data: {
       status: 'PUBLISHED',
+      publishedVersionId: version.id,
       publishedAt: s.publishedAt ?? new Date(),
       archivedAt: null,
       linkTokenHash: sha256(token),
@@ -99,9 +140,10 @@ export async function archive(id: string, ownerId: string, archived: boolean) {
   })
 }
 
+/** A copy with its own media rows (stored objects are shared, not re-uploaded) and the current draft document. */
 export async function duplicate(id: string, ownerId: string) {
   const s = await ownedSurprise(id, ownerId)
-  return db.surprise.create({
+  const copy = await db.surprise.create({
     data: {
       ownerId,
       occasion: s.occasion,
@@ -110,42 +152,70 @@ export async function duplicate(id: string, ownerId: string) {
       experienceType: s.experienceType,
       title: s.title ? `${s.title} (copy)` : null,
       input: s.input as Prisma.InputJsonValue,
-      content: (s.content ?? undefined) as Prisma.InputJsonValue | undefined,
       theme: (s.theme ?? undefined) as Prisma.InputJsonValue | undefined,
       generationStatus: s.content ? 'SUCCEEDED' : 'IDLE',
     },
   })
+  // Media ids are random cuids, so swapping them in the serialised JSON cannot hit anything else.
+  const ids = new Map<string, string>()
+  for (const m of await db.upload.findMany({ where: { surpriseId: id, status: 'ready' } })) {
+    const { id: oldId, createdAt: _, ...rest } = m
+    ids.set(oldId, (await db.upload.create({ data: { ...rest, data: rest.data ?? undefined, surpriseId: copy.id } })).id)
+  }
+  const remap = (v: unknown) => v && JSON.parse(JSON.stringify(v).replace(/"([a-z0-9]{20,40})"/g, (q, k) => (ids.has(k) ? `"${ids.get(k)}"` : q)))
+  const content = remap(s.content) as Prisma.InputJsonValue | undefined
+  if (content) await db.surprise.update({ where: { id: copy.id }, data: { content } })
+  if (s.draftVersionId) await saveDraftDoc(copy.id, ownerId, remap(await draftDoc(s)), 'manual')
+  return copy
 }
 
 export async function remove(id: string, ownerId: string) {
   await ownedSurprise(id, ownerId)
-  await db.surprise.delete({ where: { id } }) // cascades to generations, deliveries and photos
+  await deleteMedia({ surpriseId: id }) // stored objects first; the rest cascades
+  await db.surprise.delete({ where: { id } })
 }
 
-/** Scheduled "open when" letters: until unlockAt, the recipient receives the envelope but not the letter. */
-export function withLockedLettersHidden(content: StoredContent, now = Date.now()): StoredContent {
-  if (content.type !== 'open_when') return content
+/**
+ * Time-locked content never leaves the server early: a locked scene is sent without its blocks, and a locked
+ * open-when letter is sent as an envelope without its text.
+ */
+export function withLockedContentHidden(doc: SurpriseDoc, now = Date.now()): SurpriseDoc {
+  const locked = (at?: string) => Boolean(at && new Date(at).getTime() > now)
   return {
-    ...content,
-    letters: content.letters.map((l) => (l.unlockAt && new Date(l.unlockAt).getTime() > now ? { ...l, letter: '' } : l)),
+    ...doc,
+    scenes: doc.scenes.map((scene) =>
+      locked(scene.unlockAt)
+        ? { ...scene, blocks: [] }
+        : {
+            ...scene,
+            blocks: scene.blocks.map((b) =>
+              b.type === 'open_when'
+                ? { ...b, props: { ...b.props, letters: (b.props.letters as { unlockAt?: string; letter: string }[]).map((l) => (locked(l.unlockAt) ? { ...l, letter: '' } : l)) } }
+                : b,
+            ),
+          },
+    ),
   }
+}
+
+/** The published document; surprises published before versions existed are converted on the fly. */
+async function publishedDoc(s: { publishedVersionId: string | null; content: unknown; theme: unknown }) {
+  if (s.publishedVersionId) {
+    const v = await db.surpriseVersion.findUnique({ where: { id: s.publishedVersionId } })
+    return v ? parseDoc(v.doc) : null
+  }
+  return legacyDraftDoc(s)
 }
 
 /** Recipient side: resolves a private link. Returns only what the recipient may see. */
 export async function openByToken(token: string) {
   if (!/^[A-Za-z0-9_-]{20,64}$/.test(token)) return null
   const s = await db.surprise.findUnique({ where: { linkTokenHash: sha256(token) } })
-  if (!s || s.status !== 'PUBLISHED' || s.linkRevokedAt || !s.content) return null
+  if (!s || s.status !== 'PUBLISHED' || s.linkRevokedAt) return null
   if (s.linkExpiresAt && s.linkExpiresAt < new Date()) return null
-  const parsed = StoredContent.safeParse(s.content)
-  if (!parsed.success) return null
-  return {
-    id: s.id,
-    content: withLockedLettersHidden(parsed.data),
-    theme: Theme.parse(s.theme ?? { palette: parsed.data.palette }),
-    recipientName: s.recipientName,
-    creatorName: s.creatorName,
-  }
+  const doc = await publishedDoc(s).catch(() => null)
+  if (!doc) return null
+  return { id: s.id, doc: withLockedContentHidden(doc), recipientName: s.recipientName, creatorName: s.creatorName }
 }
 
 /** Privacy-light engagement: counts and progress only, no recipient identity, IP or device. */

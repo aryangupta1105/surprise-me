@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import type { StoredContent } from '@/lib/schemas'
-import type { ExpProps } from './Experience'
+import type { ExpProps } from '@/engine/player/shared'
 
 type Content = Extract<StoredContent, { type: 'gift_reveal' }>
 const TAPS_TO_OPEN = 3
