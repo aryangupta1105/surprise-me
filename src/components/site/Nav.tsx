@@ -15,6 +15,7 @@ export function Nav({ minimal }: { minimal?: boolean }) {
       <Logo />
       {!minimal && (
         <nav className="flex items-center gap-1 sm:gap-3 text-sm font-semibold">
+          <Link href="/templates" className="hidden sm:block px-3 py-2 rounded-full hover:bg-ink/5">Templates</Link>
           <Link href="/dashboard" className="px-3 py-2 rounded-full hover:bg-ink/5">My surprises</Link>
           <Link href="/settings" className="hidden sm:block px-3 py-2 rounded-full hover:bg-ink/5">Settings</Link>
           <Link href="/create" className="px-4 py-2 rounded-full bg-ink text-white hover:bg-ink/85">Create</Link>

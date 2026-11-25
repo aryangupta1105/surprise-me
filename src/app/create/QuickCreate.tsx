@@ -153,7 +153,7 @@ export function QuickCreate() {
                 ))}
               </div>
             </div>
-            <p className="mt-10 text-sm text-ink-soft">Prefer to answer questions step by step? <Link href="/create/guided" className="font-semibold text-rose">Use Guided create →</Link></p>
+            <p className="mt-10 text-sm text-ink-soft">Prefer to answer questions step by step? <Link href="/create/guided" className="font-semibold text-rose">Use Guided create →</Link> · Or <Link href="/templates" className="font-semibold text-rose">start from a template →</Link></p>
           </motion.section>
         )}
 

@@ -83,8 +83,10 @@ export function insertTemplate(doc: SurpriseDoc, id: string, at: number, names: 
   let opening: Scene | undefined
   let end: Scene | undefined
   for (const s of styleScenes(instantiate(t, names), t, doc.theme, keepColours)) {
-    if (s.kind === 'opening') hasOpening ? skipped.push({ template: t.name, scene: s.title }) : (opening = s)
-    else if (s.kind === 'finale') hasFinale ? skipped.push({ template: t.name, scene: s.title }) : (end = s)
+    const own = s.kind === 'opening' ? hasOpening : s.kind === 'finale' ? hasFinale : null
+    if (own) skipped.push({ template: t.name, scene: s.title })
+    else if (s.kind === 'opening') opening = s
+    else if (s.kind === 'finale') end = s
     else add.push(s)
   }
   const finaleAt = doc.scenes.findIndex((s) => s.kind === 'finale')

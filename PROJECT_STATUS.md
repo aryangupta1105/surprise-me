@@ -1,6 +1,6 @@
 # SurpriseMe — Project status
 
-_Last updated: 2026-11-25 (Phase 4 media library done on local storage — see SURPRISEME_AUDIT.md)_
+_Last updated: 2026-11-25 (Phase 5 templates done; code on github.com/aryangupta1105/surprise-me — see SURPRISEME_AUDIT.md)_
 
 ## Summary
 
@@ -16,7 +16,8 @@ The full product is built and runs locally: landing page, guided Surprise Studio
 | 2 Scene/block engine | **Done** — registry (14 block types), document schema, pure ops, legacy converter, `SurpriseVersion` + frozen publishing, one scene player for recipients and preview, resume after refresh, server-side locks. 41/41 tests; browser-checked on old links and the editor |
 | 3 Quick Create | **Done** — `/create` = one description box + optional photos → AI brief (editable: names, occasion, tone, 1–3 experiences, memories, own message, palette, photos) → multi-scene draft (opening, photo gallery, one scene per experience, finale with the creator's words verbatim). Guided create kept at `/create/guided`. Document surprises open in a new editor: scenes (add/move/duplicate/delete, kind, transition, colours, lock), blocks (add from the registry, move/duplicate/delete, schema-generated forms), theme, autosave, undo/redo, live preview. 48/48 tests; live AI + browser walkthrough |
 | 4 Media library | **Done — on Backblaze B2** (S3-compatible; R2 also works) — photos, audio (upload or record a voice note in the browser, up to 3 min) and video per surprise; browser uploads straight to storage (R2 presigned PUT, or `DATA_DIR/media` without R2), server sniffs the real file type before accepting it; photos shrunk to 2048 px in the browser; library picker to reuse/delete media; new **Song or voice note** and **Video** blocks; video seeking (Range); duplicates share files; cleanup on delete and for abandoned uploads. 55/55 tests; browser-checked upload → editor → published link on mobile |
-| 5 Templates | Next |
+| 5 Templates | **Done (10 of 15)** — Birthday Celebration, Romantic Love Story, Friendship Scrapbook, Digital Memory Book, Mystery Treasure Hunt, Open When Letters, Interactive Friendship Quiz, Mystery Gift Reveal, Our Soundtrack, Time Capsule. `/templates` gallery (category filter, live preview, combine several in any order); server-side merging (one opening/finale — creator picks which, content kept verbatim, fresh ids, overall theme chosen, template colours kept only where light/dark-compatible, big transitions softened when motion isn't full, 30-scene limit); **Insert a template** in the editor (undo-able); **Still to add** list of empty media slots. 77/77 tests; browser-checked. Magazine Cover, Personality Awards, Journey Map, Countdown and Mini Game need new block types → Phase 9 as planned |
+| 6 Studio completion | Next |
 
 ## Original build phases
 

@@ -49,3 +49,13 @@ Every external call, how it was tested and its status. Re-run commands are in RE
 | Browser → B2 direct upload (CORS) | built-in browser: 3000×2000 JPEG + WebM video into the editor | stored in B2 (not on disk), verified, autosaved; photo/audio/video play on the published link on a phone-sized screen | TESTED |
 | Cloudflare R2 | not used (account could not enable R2) | — | NOT NEEDED |
 | Voice recording with a real microphone | needs a person at the mic | — | UNTESTED |
+
+## Phase 5 — templates (no external calls)
+
+| Check | How | Result |
+| --- | --- | --- |
+| All 10 templates are valid documents, names with quotes substituted safely | Vitest `tests/templates.test.ts` | pass |
+| Merge rules (one opening/finale, order, chosen opening/finale/theme, colour compatibility, motion, limits, missing media), insert rules, server create + insert with ownership | Vitest | 22 tests pass (77/77 overall) |
+| Brief's example: Birthday + Friendship Scrapbook + Our Soundtrack + Open When, finale from Soundtrack | built-in browser | 11 scenes in order, 6 duplicate openings/finales left out, 14 media slots listed, names filled in |
+| Insert Friendship Quiz after scene 3 in the editor, then Undo | built-in browser | inserted at the right place; undo restores 11 scenes |
+| Gallery at 375 px | built-in browser | no horizontal scroll; tray stacks |

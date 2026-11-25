@@ -87,3 +87,35 @@ describe('insertTemplate', () => {
     expect(doc.scenes.map((s) => s.kind)).toEqual(['opening', 'game', 'media', 'finale'])
   })
 })
+
+describe('template API (server)', async () => {
+  const { createFromTemplates, insertIntoSurprise, FromTemplatesInput } = await import('@/server/templates')
+  const { draftDoc } = await import('@/server/surprises')
+  const { db } = await import('@/lib/db')
+  const { makeUser } = await import('./fixtures')
+
+  it('creates a surprise from merged templates as a template draft version', async () => {
+    const u = await makeUser()
+    const r = await createFromTemplates(u.id, FromTemplatesInput.parse({ templateIds: ['birthday-celebration', 'open-when-letters'], recipientName: 'Maya', creatorName: 'Rohan', palette: 'lagoon' }))
+    const s = await db.surprise.findUniqueOrThrow({ where: { id: r.id } })
+    const v = await db.surpriseVersion.findUniqueOrThrow({ where: { id: s.draftVersionId! } })
+    expect(v.source).toBe('template')
+    expect(s.title).toBe('Happy birthday, Maya! 🎉')
+    const doc = await draftDoc(s)
+    expect(doc.theme.palette).toBe('lagoon')
+    expect(doc.scenes.map((x) => x.title)).toEqual(['Opening', 'Your year in photos', 'Birthday wishes', 'The letters', 'Finale'])
+    expect(r.missing).toHaveLength(6)
+  })
+
+  it('inserts into an owned surprise only, with a clear error for bad input', async () => {
+    const u = await makeUser()
+    const { id } = await createFromTemplates(u.id, FromTemplatesInput.parse({ templateIds: ['friendship-quiz'], recipientName: 'Maya', creatorName: 'Rohan' }))
+    const doc = await draftDoc(await db.surprise.findUniqueOrThrow({ where: { id } }))
+    const r = await insertIntoSurprise(id, u.id, doc, 'our-soundtrack', 2, false)
+    expect(r.doc.scenes.map((x) => x.title)).toEqual(['Opening', 'The quiz', 'Track 1', 'Track 2', 'Track 3', 'Finale'])
+    const other = await makeUser()
+    await expect(insertIntoSurprise(id, other.id, doc, 'our-soundtrack', 2, false)).rejects.toMatchObject({ status: 404 })
+    await expect(insertIntoSurprise(id, u.id, doc, 'nope', 2, false)).rejects.toMatchObject({ status: 400 })
+    await expect(insertIntoSurprise(id, u.id, { version: 1 }, 'our-soundtrack', 2, false)).rejects.toMatchObject({ status: 400 })
+  })
+})

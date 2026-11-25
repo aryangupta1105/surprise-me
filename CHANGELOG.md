@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-25 — Phase 5: templates and merging
+- 10 starter templates as data (`src/templates/library.ts`): Birthday Celebration, Romantic Love Story, Friendship Scrapbook, Digital Memory Book, Mystery Treasure Hunt, Open When Letters, Interactive Friendship Quiz, Mystery Gift Reveal, Our Soundtrack, Time Capsule. Each has description, category, occasions, theme, scenes, transitions, what to personalise; required media is derived from its empty slots.
+- Merging (`src/engine/compose.ts`, run on the server by `POST /api/templates`): merges scene structures, keeps one opening and one finale (creator chooses), preserves each template's content, re-ids everything, applies the overall theme, keeps template colours only where compatible, softens flip/zoom when motion is gentle or off, lists missing media, refuses more than 30 scenes.
+- `/templates` gallery: filter by category, preview any template in the player, combine several and reorder them, then choose names, occasion, colours, opening and finale.
+- Editor: **Insert a template** after the selected scene (`POST /api/surprises/:id/insert-template`, applied as an undo-able edit; your opening, finale and colours stay), and a **Still to add** list that jumps to each empty photo/audio/video slot.
+- Code pushed to github.com/aryangupta1105/surprise-me: `main` starts with the pre-evolution v1 (rebuilt from the session record, 26/26 tests) followed by the evolution work.
+
 ## 2026-11-25 — Media storage on Backblaze B2
 - Storage settings are now general `S3_*` variables (endpoint, region, bucket, optional name prefix, keys), so B2, R2 or any S3-compatible bucket works. In use: Backblaze B2 bucket `surpriseme` (private), keys limited to names starting `surpriseme/`.
 - Bucket CORS updated (with the owner's OK) to allow browser uploads from `http://localhost:3100` only.

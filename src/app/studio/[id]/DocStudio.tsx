@@ -3,13 +3,15 @@
 import { useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { BlockForm, IconBtn } from '@/components/BlockForm'
-import { Button, Card, Chip, Select, api, cx, useToast } from '@/components/ui'
+import { Button, Card, Chip, Modal, Select, api, cx, useToast } from '@/components/ui'
 import { BLOCKS, BLOCK_TYPES, type BlockType } from '@/engine/blocks'
+import { missingMedia } from '@/engine/compose'
 import { SCENE_KINDS, TRANSITIONS, type SurpriseDoc } from '@/engine/doc'
 import * as ops from '@/engine/ops'
 import { Player } from '@/engine/player/Player'
 import { PALETTE_INFO } from '@/lib/catalog'
 import { MOTION, PALETTES } from '@/lib/schemas'
+import { TEMPLATES } from '@/templates/library'
 import { SharePanel } from './SharePanel'
 import type { EditorSurprise } from './StudioEditor'
 
@@ -33,10 +35,11 @@ export function DocStudio({ initial, initialDoc, isGuest }: { initial: EditorSur
   const [saveState, setSaveState] = useState<'saved' | 'saving' | 'unsaved' | 'error'>('saved')
   const [adding, setAdding] = useState(false)
   const [previewKey, setPreviewKey] = useState(0)
+  const [inserting, setInserting] = useState<'closed' | 'open' | string>('closed') // template id while busy
   const latest = useRef(doc)
 
   useEffect(() => {
-    if (params.get('fresh')) toast('Your first draft is ready — make it yours ✨', 'good')
+    if (params.get('fresh')) toast(params.get('fresh') === 'template' ? 'Your surprise is ready — swap in your own words and media ✨' : 'Your first draft is ready — make it yours ✨', 'good')
   }, [params, toast])
 
   /** Every change goes through an engine operation; invalid results are refused with a message. */
@@ -114,6 +117,24 @@ export function DocStudio({ initial, initialDoc, isGuest }: { initial: EditorSur
 
   const sceneIndex = Math.max(0, doc.scenes.findIndex((x) => x.id === sel))
   const scene = doc.scenes[sceneIndex]
+  const missing = missingMedia(doc)
+
+  /** Merging runs on the server; the result is applied like any edit, so it can be undone. */
+  const insertTemplate = async (templateId: string) => {
+    setInserting(templateId)
+    try {
+      const before = new Set(latest.current.scenes.map((x) => x.id))
+      const r = await api<{ doc: SurpriseDoc; skipped: { scene: string }[] }>(`/api/surprises/${s.id}/insert-template`, { body: { doc: latest.current, templateId, at: sceneIndex + 1 } })
+      apply(() => r.doc)
+      const first = r.doc.scenes.find((x) => !before.has(x.id))
+      if (first) { setSel(first.id); setPreviewKey((k) => k + 1) }
+      toast(`Added ${r.doc.scenes.length - before.size} scene(s)${r.skipped.length ? ` — kept your own ${r.skipped.map((x) => x.scene.toLowerCase()).join(' and ')}` : ''}`, 'good')
+      setInserting('closed')
+    } catch (e) {
+      toast((e as Error).message, 'bad')
+      setInserting('open')
+    }
+  }
 
   return (
     <div className="mx-auto max-w-[1400px] px-5 pb-24">
@@ -139,6 +160,20 @@ export function DocStudio({ initial, initialDoc, isGuest }: { initial: EditorSur
           </button>
         ))}
       </div>
+
+      <Modal open={inserting !== 'closed'} onClose={() => setInserting('closed')} title="Insert a template">
+        <p className="text-sm text-ink-soft mb-4">Its scenes go after “{scene.title || 'this scene'}”. Your opening, finale and colours stay as they are.</p>
+        <ul className="space-y-2 max-h-[60dvh] overflow-y-auto">
+          {TEMPLATES.map((t) => (
+            <li key={t.id}>
+              <button disabled={inserting !== 'open'} onClick={() => insertTemplate(t.id)} className="w-full text-left rounded-2xl ring-1 ring-line p-3 hover:ring-rose disabled:opacity-50 flex gap-3 items-start">
+                <span className="text-2xl" aria-hidden>{t.emoji}</span>
+                <span><span className="font-semibold block">{t.name}{inserting === t.id ? ' — adding…' : ''}</span><span className="text-sm text-ink-soft">{t.description}</span></span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </Modal>
 
       {tab === 'share' ? (
         <SharePanel s={s} setS={setS} dirty={saveState !== 'saved'} save={() => save()} isGuest={isGuest} />
@@ -168,6 +203,17 @@ export function DocStudio({ initial, initialDoc, isGuest }: { initial: EditorSur
               ))}
             </ol>
             <Button variant="secondary" size="sm" className="w-full" onClick={() => apply((d) => ops.addScene(d, { kind: 'content', title: 'New scene', blocks: [ops.newBlock('heading')] }, sceneIndex + 1))}>+ Add scene</Button>
+            <Button variant="ghost" size="sm" className="w-full" onClick={() => setInserting('open')}>+ Insert a template</Button>
+            {missing.length > 0 && (
+              <Card className="p-4">
+                <h3 className="text-xs font-bold uppercase tracking-widest text-ink-soft mb-2">Still to add</h3>
+                <ul className="space-y-1 max-h-48 overflow-y-auto">
+                  {missing.map((m, i) => (
+                    <li key={i}><button onClick={() => { setSel(m.sceneId); setPreviewKey((k) => k + 1) }} className="text-left text-sm hover:text-rose w-full truncate">{m.kind === 'image' ? '📸' : m.kind === 'audio' ? '🎵' : '🎬'} {m.scene || 'Untitled'} · {m.block}</button></li>
+                  ))}
+                </ul>
+              </Card>
+            )}
             <Card className="p-4 space-y-3">
               <h3 className="text-xs font-bold uppercase tracking-widest text-ink-soft">Whole surprise</h3>
               <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Palette">

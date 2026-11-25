@@ -51,6 +51,10 @@ Block types today: heading, paragraph, handwritten, quote, letter, image, galler
 - **Serving:** creators use `/api/uploads/:id`; recipients use `/api/s/:token/photo/:id` (published surprise only). With S3 storage this is a 302 to a 1-hour signed GET; locally the file is streamed with Range support.
 - **Signing:** SigV4 presigning is implemented in ~30 lines (`sigv4.ts`, tested against AWS's published example) instead of adding the AWS SDK.
 
+## Templates (`src/templates/library.ts`, `src/engine/compose.ts`)
+
+Templates are typed data: scenes with `{to}`/`{from}` placeholders and empty media slots. `composeTemplates(ids, options)` and `insertTemplate(doc, id, at, names)` are pure and validated with `parseDoc`; the API runs them on the server (`src/server/templates.ts`) and saves template drafts as `SurpriseVersion` with `source: 'template'`. The browser uses the same functions only for previews and the summary line. `missingMedia(doc)` lists empty slots for the editor.
+
 ## Hosting constraints (Embarko)
 
 SQLite under `DATA_DIR` (not backed up), one process with 256 MB memory, no WebSockets, public-only file store. Consequences: media processing in the browser, private media in an S3-compatible bucket (Backblaze B2; falls back to `DATA_DIR/media`), the scheduler stays a viaSocket cron flow, and our tick secret must not be named `CRON_SECRET` (rename before deploy).
