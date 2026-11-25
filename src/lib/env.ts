@@ -21,4 +21,6 @@ const schema = z.object({
   S3_PREFIX: z.string().default(''), // e.g. 'surpriseme/' when the key may only write names starting with it
 })
 
-export const env = schema.parse({ ...process.env, DATABASE_URL: databaseUrl() })
+// The build may run without secrets (hosts inject them only at runtime), so validation is skipped there; it runs at start-up.
+const raw = { ...process.env, DATABASE_URL: databaseUrl() }
+export const env = process.env.NEXT_PHASE === 'phase-production-build' ? (raw as unknown as z.infer<typeof schema>) : schema.parse(raw)

@@ -31,4 +31,7 @@ console.log('status:', flow.status, '| trigger:', JSON.stringify(flow.trigger).s
 if (process.argv.includes('--pause')) {
   await user.setFlowStatus(scriptId, 2)
   console.log('paused (APP_URL is not public yet)')
+} else {
+  await user.setFlowStatus(scriptId, 1)
+  console.log('running')
 }
