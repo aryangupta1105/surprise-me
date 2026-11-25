@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
-    "start": "prisma migrate deploy && next start",
+    "start": "n=0; until prisma migrate deploy; do n=$((n+1)); [ $n -ge 10 ] && exit 1; echo \"database busy (old instance still running?), retrying in 3s\"; sleep 3; done; next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

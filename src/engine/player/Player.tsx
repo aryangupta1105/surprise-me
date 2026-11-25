@@ -41,6 +41,7 @@ export function Player({ doc, photo, onProgress, resumeKey, preview, startAt }: 
   const total = doc.scenes.length
   const [index, setIndex] = useState(() => Math.min(startAt ?? readResume(resumeKey), total - 1))
   const best = useRef(0)
+  const root = useRef<HTMLDivElement>(null)
   const motionLevel = doc.theme.motion
   const scene = doc.scenes[index]
   const last = index === total - 1
@@ -67,6 +68,10 @@ export function Player({ doc, photo, onProgress, resumeKey, preview, startAt }: 
         if (resumeKey) localStorage.setItem(resumeKey, String(next))
       } catch {}
       report((next / Math.max(1, total - 1)) * 100)
+      // Each scene starts at its top, on the page and inside a scrolling preview frame.
+      let el = root.current?.parentElement
+      while (el && el.scrollHeight <= el.clientHeight) el = el.parentElement
+      el?.scrollTo({ top: 0, behavior: 'smooth' })
       if (!preview) window.scrollTo({ top: 0, behavior: 'smooth' })
     },
     [total, resumeKey, report, preview],
@@ -98,7 +103,7 @@ export function Player({ doc, photo, onProgress, resumeKey, preview, startAt }: 
 
   return (
     <MotionConfig reducedMotion={motionLevel === 'off' ? 'always' : 'user'}>
-      <div data-palette={scene.palette ?? doc.theme.palette} className={`relative overflow-hidden transition-[background] duration-700 ${preview ? 'min-h-[640px] rounded-[1.75rem]' : 'min-h-dvh'}`}>
+      <div ref={root} data-palette={scene.palette ?? doc.theme.palette} className={`relative overflow-hidden transition-[background] duration-700 ${preview ? 'min-h-[640px] rounded-[1.75rem]' : 'min-h-dvh'}`}>
         {bg && (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element -- private, access-checked media */}

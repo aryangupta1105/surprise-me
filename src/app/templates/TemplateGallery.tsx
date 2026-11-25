@@ -92,8 +92,8 @@ export function TemplateGallery() {
       <Modal open={!!preview} onClose={() => setPreview(null)} title={preview ? `${preview.emoji} ${preview.name}` : ''}>
         {preview && (
           <>
-            <div className="rounded-[1.5rem] ring-4 ring-ink overflow-hidden h-[60dvh] overflow-y-auto">
-              <Player key={preview.id} doc={composeTemplates([preview.id], SAMPLE).doc} photo={() => null} preview />
+            <div className="rounded-[1.5rem] ring-4 ring-ink overflow-hidden h-[min(640px,72dvh)] overflow-y-auto overscroll-contain">
+              <div className="[zoom:0.75]"><Player key={preview.id} doc={composeTemplates([preview.id], SAMPLE).doc} photo={() => null} preview /></div>
             </div>
             <p className="text-xs text-ink-soft mt-3">Sample names shown. Personalise it with: {preview.customize.join(', ')}.</p>
           </>
