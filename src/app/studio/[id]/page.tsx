@@ -32,6 +32,7 @@ export default async function StudioPage({ params }: { params: Promise<{ id: str
     progress: s.progress,
     lastOpenedAt: s.lastOpenedAt?.toISOString() ?? null,
     completedAt: s.completedAt?.toISOString() ?? null,
+    hasLinkPassword: Boolean(s.linkPasswordHash),
   }
   return (
     <div className="grain relative min-h-dvh">

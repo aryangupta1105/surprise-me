@@ -23,4 +23,5 @@ Planned (approved in `SURPRISEME_AUDIT.md`): `ContributionInvite`, `Contribution
 | `*_init_sqlite` | full schema on SQLite (data copied from local Postgres, 2026-11-25) |
 | `*_surprise_versions` | `SurpriseVersion` table, `Surprise.publishedVersionId` (additive) |
 | `*_draft_version` | `Surprise.draftVersionId` (additive): the document being edited |
+| `*_accounts_and_sharing` | `User.passwordHash`, `Surprise.linkPasswordHash/inviteTokenHash`, tables `AiUse`, `Reaction`, `Contribution` (additive) |
 | `*_media_library` | `Upload.kind/status/name/storageKey`, `data` nullable, indexes (SQLite table rebuild; all rows copied) |

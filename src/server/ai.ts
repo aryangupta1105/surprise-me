@@ -75,7 +75,23 @@ const jsonSchemaFor = (name: string, schema: z.ZodType) => ({
   strict: true,
 })
 
+/** Daily AI allowance per person (cost control). Guests get enough for a few surprises; accounts get more. */
+export const AI_DAILY = { guest: 20, account: 150 }
+
+async function spendAiAllowance(userId: string, kind: string) {
+  const user = await db.user.findUnique({ where: { id: userId }, select: { isGuest: true } })
+  if (!user) return // system callers (scripts) are not people
+  const limit = user.isGuest ? AI_DAILY.guest : AI_DAILY.account
+  const used = await db.aiUse.count({ where: { userId, createdAt: { gt: new Date(Date.now() - 86_400_000) } } })
+  if (used >= limit)
+    throw user.isGuest
+      ? new AppError(429, `You've used today's ${limit} free AI requests. Create a free account to get ${AI_DAILY.account} a day.`, 'account_required')
+      : new AppError(429, `You've used today's ${limit} AI requests. They refresh over the next 24 hours.`, 'ai_limit')
+  await db.aiUse.create({ data: { userId, kind } })
+}
+
 export async function askJson(userId: string, threadId: string, prompt: string, message: string, schema: z.ZodType, name: string) {
+  await spendAiAllowance(userId, name)
   const reply = await viasocket()
     .user(userId)
     .ai.send({
@@ -119,6 +135,7 @@ export async function writeExperience(surpriseId: string, ownerId: string, input
       await db.aIGeneration.create({ data: { surpriseId, section: type, status: 'SUCCEEDED', model: AI_MODEL.model, threadId, output: content } })
       return content
     } catch (err) {
+      if (err instanceof AppError && err.status === 429) throw err // the daily allowance: show it as is, don't retry
       lastError = err instanceof z.ZodError ? 'The AI answer did not match the expected shape.' : String((err as Error).message)
       log('warn', 'ai generation attempt failed', { surpriseId, type, attempt, error: String(err) })
       await db.aIGeneration.create({ data: { surpriseId, section: type, status: 'FAILED', model: AI_MODEL.model, threadId, error: lastError.slice(0, 500) } })
@@ -145,7 +162,8 @@ export async function generateExperience(surpriseId: string, ownerId: string) {
     })
     return content
   } catch (err) {
-    throw await failGeneration(surpriseId, (err as Error).message)
+    const failure = await failGeneration(surpriseId, (err as Error).message) // always releases the claim
+    throw err instanceof AppError ? err : failure
   }
 }
 
@@ -177,6 +195,7 @@ export async function regenerateSection(surpriseId: string, ownerId: string, ind
     await db.aIGeneration.create({
       data: { surpriseId, section: `${listKey}.${index}`, status: 'FAILED', model: AI_MODEL.model, threadId, error: String(err).slice(0, 500) },
     })
+    if (err instanceof AppError && err.status === 429) throw err
     throw new AppError(502, 'Could not rewrite that section. Please try again.', 'generation_failed')
   }
 }

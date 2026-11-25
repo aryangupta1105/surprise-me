@@ -11,6 +11,7 @@ import { Quiz } from '@/components/experiences/Quiz'
 import { TreasureHunt } from '@/components/experiences/TreasureHunt'
 import type { BlockProps, BlockType } from '../blocks'
 import type { ExpProps } from './shared'
+import { Audio, Awards, Countdown, Journey, MagazineCover, MemoryMatch, ScratchReveal } from './blocks/extra'
 
 // Trusted renderers, one per registered block type. Text is always rendered as text (never HTML).
 
@@ -78,18 +79,6 @@ const Gallery: R<'gallery'> = ({ props, ctx }) => {
     </div>
   )
 }
-// Native controls: accessible, keyboard-friendly, and they play on every phone without extra code.
-const audio: R<'audio'> = ({ props, ctx }) => {
-  const src = ctx.photo(props.audioId)
-  return (
-    <figure className="p-card rounded-3xl p-6 shadow-lg text-center space-y-3">
-      <div className="text-4xl" aria-hidden>🎵</div>
-      {props.title && <figcaption className="font-display text-2xl">{props.title}</figcaption>}
-      {src ? <audio src={src} controls preload="metadata" className="w-full" /> : <p className="text-sm opacity-60">Audio coming soon</p>}
-      {props.note && <p className="font-hand text-xl opacity-85">{props.note}</p>}
-    </figure>
-  )
-}
 const video: R<'video'> = ({ props, ctx }) => {
   const src = ctx.photo(props.videoId)
   return (
@@ -114,6 +103,7 @@ const exp = <T extends BlockType>(C: (p: ExpProps<never>) => React.ReactNode): R
   }
 
 export const RENDERERS: { [T in BlockType]: R<T> } = {
-  heading, paragraph, handwritten, quote, letter, image, gallery: Gallery, audio, video, confetti: ConfettiBurst,
+  heading, paragraph, handwritten, quote, letter, image, gallery: Gallery, audio: Audio, video, confetti: ConfettiBurst,
   treasure_hunt: exp(TreasureHunt), timeline: exp(MemoryJourney), quiz: exp(Quiz), gift_reveal: exp(GiftReveal), cards: exp(Cards), open_when: exp(OpenWhen),
+  scratch_reveal: ScratchReveal, memory_match: MemoryMatch, countdown: Countdown, awards: Awards, journey: Journey, magazine_cover: MagazineCover,
 }

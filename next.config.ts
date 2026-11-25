@@ -5,6 +5,8 @@ const security = [
   { key: 'Referrer-Policy', value: 'no-referrer' }, // private links never leak via Referer
   { key: 'X-Frame-Options', value: 'DENY' },
   { key: 'Permissions-Policy', value: 'camera=(), microphone=(self), geolocation=()' },
+  // HTTPS only once deployed (never on localhost, where it would stick in the browser).
+  ...(process.env.NODE_ENV === 'production' ? [{ key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' }] : []),
 ]
 
 const nextConfig: NextConfig = {

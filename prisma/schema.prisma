@@ -16,6 +16,7 @@ model User {
   email       String?  @unique
   name        String?
   externalId  String?  @unique // id from the account provider, once upgraded
+  passwordHash String?          // scrypt; only for email + password accounts
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -24,6 +25,44 @@ model User {
   uploads     Upload[]
   connections IntegrationConnection[]
   reminders   CalendarReminder[]
+  aiUses      AiUse[]
+}
+
+// One row per AI call, for the daily allowance (guests get fewer than accounts).
+model AiUse {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      String
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+// A recipient's reply: an emoji and an optional note, shown to the creator.
+model Reaction {
+  id         String   @id @default(cuid())
+  surpriseId String
+  surprise   Surprise @relation(fields: [surpriseId], references: [id], onDelete: Cascade)
+  emoji      String
+  message    String   @default("")
+  fromName   String   @default("")
+  createdAt  DateTime @default(now())
+
+  @@index([surpriseId, createdAt])
+}
+
+// Friends invited by the creator to add a message. Nothing reaches the surprise until the creator adds it.
+model Contribution {
+  id         String   @id @default(cuid())
+  surpriseId String
+  surprise   Surprise @relation(fields: [surpriseId], references: [id], onDelete: Cascade)
+  name       String
+  message    String
+  status     String   @default("pending") // pending | added | hidden
+  createdAt  DateTime @default(now())
+
+  @@index([surpriseId, createdAt])
 }
 
 model Session {
@@ -71,6 +110,9 @@ model Surprise {
   linkTokenEnc     String?
   linkRevokedAt    DateTime?
   linkExpiresAt    DateTime?
+  linkPasswordHash String?          // optional extra lock on the private link (scrypt)
+  // Group messages: friends add notes through their own link (hash only).
+  inviteTokenHash  String?          @unique
   publishedAt      DateTime?
   archivedAt       DateTime?
 
@@ -92,6 +134,8 @@ model Surprise {
   deliveries       Delivery[]
   uploads          Upload[]
   reminders        CalendarReminder[]
+  reactions        Reaction[]
+  contributions    Contribution[]
 
   @@index([ownerId, status])
 }

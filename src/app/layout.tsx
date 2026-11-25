@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { Caveat, Fraunces, Manrope } from 'next/font/google'
+import { AccountDialog } from '@/components/AccountDialog'
 import { Toaster } from '@/components/ui'
 import './globals.css'
 
@@ -17,7 +18,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${fraunces.variable} ${manrope.variable} ${caveat.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
-        <Toaster>{children}</Toaster>
+        <Toaster>
+          {children}
+          <AccountDialog />
+        </Toaster>
       </body>
     </html>
   )

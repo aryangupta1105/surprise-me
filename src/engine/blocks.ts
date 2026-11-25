@@ -97,6 +97,49 @@ export const BLOCKS = {
     schema: z.object({ letters: z.array(OpenWhenAI.shape.letters.element.extend(extras)).min(1).max(8) }),
     create: () => ({ letters: [{ when: 'Open when you miss me', emoji: '💌', letter: '…' }] }),
   },
+  scratch_reveal: {
+    label: 'Scratch card', category: 'interactive', emoji: '🪙', interactive: true,
+    schema: z.object({ prompt: text(120).default('Scratch to reveal'), hiddenText: text(500), photoId: media }),
+    create: () => ({ prompt: 'Scratch to reveal', hiddenText: 'Your secret message…' }),
+  },
+  memory_match: {
+    label: 'Memory match game', category: 'interactive', emoji: '🧩', interactive: true,
+    schema: z.object({
+      title: text(120).default(''),
+      pairs: z.array(z.object({ emoji: text(16).min(1), label: text(40).default('') })).min(3).max(8),
+    }),
+    create: () => ({ title: 'Find the pairs', pairs: [{ emoji: '🍕', label: 'Pizza' }, { emoji: '🎬', label: 'Movies' }, { emoji: '🌊', label: 'Beach' }, { emoji: '☕', label: 'Coffee' }] }),
+  },
+  // ---- showcase ----
+  countdown: {
+    label: 'Countdown', category: 'text', emoji: '⏰',
+    schema: z.object({ target: z.string().datetime(), title: text(120).default(''), doneMessage: text(300).default('') }),
+    create: () => ({ target: new Date(Date.now() + 7 * 864e5).toISOString(), title: 'Counting down to…', doneMessage: 'It’s time!' }),
+  },
+  awards: {
+    label: 'Personality awards', category: 'text', emoji: '🏆',
+    schema: z.object({
+      title: text(120).default(''),
+      awards: z.array(z.object({ emoji: text(16).default('🏆'), award: text(80), reason: text(300).default('') })).min(1).max(10),
+    }),
+    create: () => ({ title: 'And the award goes to…', awards: [{ emoji: '🏆', award: 'Best laugh', reason: 'Nobody laughs like you.' }] }),
+  },
+  journey: {
+    label: 'Journey map', category: 'image', emoji: '🗺️',
+    schema: z.object({
+      title: text(120).default(''),
+      stops: z.array(z.object({ emoji: text(16).default('📍'), place: text(80), dateLabel: text(60).default(''), note: text(300).default(''), photoId: media })).min(2).max(12),
+    }),
+    create: () => ({ title: 'Our journey', stops: [{ emoji: '📍', place: 'Where it began', dateLabel: '', note: '' }, { emoji: '🏁', place: 'Where we are now', dateLabel: '', note: '' }] }),
+  },
+  magazine_cover: {
+    label: 'Magazine cover', category: 'image', emoji: '📰',
+    schema: z.object({
+      masthead: text(40), issue: text(60).default(''), photoId: media, headline: text(120),
+      coverLines: z.array(text(80)).max(5).default([]),
+    }),
+    create: () => ({ masthead: 'ICON', issue: 'Special edition', headline: 'Person of the year', coverLines: ['Exclusive: the secrets behind that smile'] }),
+  },
   // ---- decorative ----
   confetti: {
     label: 'Confetti burst', category: 'decor', emoji: '🎉',

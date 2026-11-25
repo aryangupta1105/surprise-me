@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-11-25 — Phases 7–10: AI assistant, Together, accounts, launch readiness
+- **AI assistant** (`src/server/assistant.ts`, `AssistantPanel.tsx`): instruction → validated operations → review → Accept (undo-able); per-block Rewrite.
+- **New blocks**: countdown, scratch reveal, memory match, awards, journey, magazine cover; waveform audio player. **Templates**: Magazine Cover, Personality Awards, Our Journey Map, Countdown Surprise, Mini Game Experience (15 total).
+- **Accounts (optional)**: email + password (scrypt), guest work kept on sign-up and merged on sign-in, new session cookie on every sign-in, change password signs out other devices. Needed only for email delivery, calendar reminders and app connections; the sign-up dialog opens by itself when an action needs it. Daily AI allowance: guests 20, accounts 150.
+- **Together**: recipient reactions (emoji + note) at the end; friends add messages through an invite link (no sign-up), creator adds chosen ones as a scene; optional password on the private link (per-browser unlock cookie, re-locks when changed).
+- **Growth**: "make one for someone you love" on the recipient's last screen and after a friend's message; gentle account prompts after publishing and on the dashboard.
+- **Launch readiness**: daily database backup to the B2 bucket from the scheduler tick; "Download my data"; HSTS in production; `CRON_SECRET` renamed `TICK_SECRET` (Embarko reserves the old name).
+- Fixes found while testing: Quick Create left a surprise stuck "generating" after some errors; returning recipients never saw the reply box; AI limit errors were shown as generic AI failures.
+- Migration `*_accounts_and_sharing` (additive).
+
 ## 2026-11-25 — Phase 6: Studio
 - Document format: optional `theme.music` (soundtrack) and per-scene `music` and `background` (photo + visibility). Additive; old documents stay valid. Locked scenes also withhold their music and background.
 - Player: photo backgrounds washed with the palette for readable text; a music button (no autoplay with sound) that follows scene changes and pauses while a voice note or video plays.

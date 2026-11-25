@@ -7,7 +7,7 @@ const schema = z.object({
   DATABASE_URL: z.string().startsWith('file:'),
   APP_SECRET: z.string().min(32),
   APP_URL: z.string().url(),
-  CRON_SECRET: z.string().min(16),
+  TICK_SECRET: z.string().min(16),
   VIASOCKET_ORG_ID: z.string().min(1),
   VIASOCKET_PROJECT_ID: z.string().min(1),
   // Optional at boot so the studio still works before setup; viaSocket calls fail with a clear message.

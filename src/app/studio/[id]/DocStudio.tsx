@@ -3,6 +3,7 @@
 import { useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { AssistantPanel, RewriteBar } from '@/components/AssistantPanel'
 import { BlockForm, IconBtn } from '@/components/BlockForm'
 import { MediaInput } from '@/components/MediaInput'
 import { Button, Card, Chip, Modal, Select, api, cx, useToast } from '@/components/ui'
@@ -42,6 +43,7 @@ export function DocStudio({ initial, initialDoc, isGuest }: { initial: EditorSur
   const [history, setHistory] = useState<{ id: string; source: string; createdAt: string; scenes: number }[] | null>(null)
   const [inserting, setInserting] = useState<'closed' | 'open' | string>('closed') // template id while busy
   const latest = useRef(doc)
+  const [rewriting, setRewriting] = useState<string | null>(null) // block id with the AI rewrite bar open
 
   useEffect(() => {
     if (params.get('fresh')) toast(params.get('fresh') === 'template' ? 'Your surprise is ready — swap in your own words and media ✨' : 'Your first draft is ready — make it yours ✨', 'good')
@@ -175,6 +177,7 @@ export function DocStudio({ initial, initialDoc, isGuest }: { initial: EditorSur
         </div>
         <div className="flex items-center gap-2">
           <span className="text-sm text-ink-soft" aria-live="polite">{{ saved: 'All changes saved', saving: 'Saving…', unsaved: 'Unsaved changes', error: 'Not saved' }[saveState]}</span>
+          <AssistantPanel surpriseId={s.id} getDoc={() => latest.current} onAccept={(d) => { apply(() => d); setPreviewKey((k) => k + 1) }} />
           <Button variant="ghost" size="sm" onClick={openHistory}>History</Button>
           <Button variant="ghost" size="sm" onClick={undo} disabled={!hist.past} aria-label="Undo">↶ Undo</Button>
           <Button variant="ghost" size="sm" onClick={redo} disabled={!hist.future} aria-label="Redo">↷ Redo</Button>
@@ -337,12 +340,14 @@ export function DocStudio({ initial, initialDoc, isGuest }: { initial: EditorSur
                 <div className="flex items-center justify-between gap-2 mb-3">
                   <h3 className="font-semibold">{BLOCKS[b.type].emoji} {BLOCKS[b.type].label}</h3>
                   <span className="flex gap-0.5">
+                    <IconBtn label="Rewrite with AI" onClick={() => setRewriting(rewriting === b.id ? null : b.id)}>✨</IconBtn>
                     <IconBtn label="Move block up" disabled={i === 0} onClick={() => apply((d) => ops.moveBlock(d, scene.id, b.id, i - 1))}>↑</IconBtn>
                     <IconBtn label="Move block down" disabled={i === scene.blocks.length - 1} onClick={() => apply((d) => ops.moveBlock(d, scene.id, b.id, i + 1))}>↓</IconBtn>
                     <IconBtn label="Duplicate block" onClick={() => apply((d) => ops.duplicateBlock(d, scene.id, b.id))}>⧉</IconBtn>
                     <IconBtn label="Delete block" onClick={() => confirm(`Delete this ${BLOCKS[b.type].label.toLowerCase()}?`) && apply((d) => ops.removeBlock(d, scene.id, b.id))}>🗑</IconBtn>
                   </span>
                 </div>
+                {rewriting === b.id && <RewriteBar surpriseId={s.id} getDoc={() => latest.current} sceneId={scene.id} blockId={b.id} onDone={(d) => { if (d) { apply(() => d); setPreviewKey((k) => k + 1) } setRewriting(null) }} />}
                 <BlockForm type={b.type} value={b.props} surpriseId={s.id} onChange={(props) => apply((d) => ops.updateBlockProps(d, scene.id, b.id, props))} />
               </Card>
             ))}

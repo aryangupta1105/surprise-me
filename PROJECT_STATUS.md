@@ -1,6 +1,6 @@
 # SurpriseMe — Project status
 
-_Last updated: 2026-11-25 (Phase 6 Studio done; code on github.com/aryangupta1105/surprise-me — see SURPRISEME_AUDIT.md)_
+_Last updated: 2026-11-25 (all evolution phases built and tested locally; not deployed yet)_
 
 ## Summary
 
@@ -18,7 +18,10 @@ The full product is built and runs locally: landing page, guided Surprise Studio
 | 4 Media library | **Done — on Backblaze B2** (S3-compatible; R2 also works) — photos, audio (upload or record a voice note in the browser, up to 3 min) and video per surprise; browser uploads straight to storage (R2 presigned PUT, or `DATA_DIR/media` without R2), server sniffs the real file type before accepting it; photos shrunk to 2048 px in the browser; library picker to reuse/delete media; new **Song or voice note** and **Video** blocks; video seeking (Range); duplicates share files; cleanup on delete and for abandoned uploads. 55/55 tests; browser-checked upload → editor → published link on mobile |
 | 5 Templates | **Done (10 of 15)** — Birthday Celebration, Romantic Love Story, Friendship Scrapbook, Digital Memory Book, Mystery Treasure Hunt, Open When Letters, Interactive Friendship Quiz, Mystery Gift Reveal, Our Soundtrack, Time Capsule. `/templates` gallery (category filter, live preview, combine several in any order); server-side merging (one opening/finale — creator picks which, content kept verbatim, fresh ids, overall theme chosen, template colours kept only where light/dark-compatible, big transitions softened when motion isn't full, 30-scene limit); **Insert a template** in the editor (undo-able); **Still to add** list of empty media slots. 77/77 tests; browser-checked. Magazine Cover, Personality Awards, Journey Map, Countdown and Mini Game need new block types → Phase 9 as planned |
 | 6 Studio completion | **Done** — drag scenes to reorder (arrows still work); photo background per scene (with visibility); soundtrack for the whole surprise and music per scene (own uploads, volume, loop, track name); recipient music button (never autoplays, continues across scenes, pauses when a voice note/video plays); **Play whole surprise** full-screen with Phone/Desktop toggle; **Version history** with restore (undo-able); **Start from a blank canvas**; older single-experience surprises get **Switch to scene editor** (their published link keeps showing the same thing). 82/82 tests; browser-checked. Licensed-track library not added: there is no licensed music source yet, so music is the creator's own uploads |
-| 7 AI assistant | Next |
+| 7 AI assistant | **Done** — "✨ AI assistant" in the editor: type an instruction, AI returns operations from a fixed list (never code/HTML), the server validates them against the document, you see summary + changes + before/after scenes, Accept is one undo-able edit. Per-block ✨ Rewrite. Media ids can't be invented; personal facts become placeholders. Live: 8 s in the browser |
+| 8 Player polish | **Done** — waveform audio player, resume counts toward completion, music bar (Phase 6), new interactive blocks |
+| 9 Together + templates | **Done** — reactions from the recipient, group messages from friends via invite link (creator chooses what goes in), optional link password, time capsule (scene locks), 6 new blocks (countdown, scratch reveal, memory match, awards, journey, magazine cover), all **15** templates |
+| 10 Launch readiness | **Done locally** — optional accounts (email + password; 36Blocks still optional), account needed only for email/reminders/app connections and higher AI allowance, daily AI allowance (guest 20, account 150), security pass (every route authorised or intentionally public + rate-limited, no raw HTML, HSTS in production), daily SQLite backup to B2, "Download my data", `CRON_SECRET` → `TICK_SECRET`. **Not deployed** (needs your OK) |
 
 ## Original build phases
 

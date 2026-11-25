@@ -15,6 +15,7 @@ export async function api<T = Record<string, unknown>>(url: string, init: { meth
     body: init.body === undefined ? undefined : init.body instanceof FormData ? init.body : JSON.stringify(init.body),
   })
   const data = await res.json().catch(() => ({}))
+  if (data.code === 'account_required' && typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('sm:account', { detail: { reason: data.error } }))
   if (!res.ok) throw Object.assign(new Error(data.error ?? `Request failed (${res.status})`), { status: res.status, code: data.code, issues: data.issues })
   return data as T
 }

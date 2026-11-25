@@ -52,7 +52,8 @@ export async function extractBrief(userId: string, description: string) {
   try {
     const out = await askJson(userId, `extract-${uid()}`, EXTRACT_PROMPT, `<description>\n${description}\n</description>`, Brief, 'brief')
     return Brief.parse(out)
-  } catch {
+  } catch (err) {
+    if (err instanceof AppError && err.status === 429) throw err
     throw new AppError(502, 'We couldn’t read that description. Try again, or use Guided create.', 'extract_failed')
   }
 }
@@ -124,8 +125,8 @@ export async function composeDraft(surpriseId: string, ownerId: string, opts: { 
     })
     return doc
   } catch (err) {
-    if (err instanceof AppError) throw err
-    throw await failGeneration(surpriseId, (err as Error).message)
+    const failure = await failGeneration(surpriseId, (err as Error).message) // always releases the claim
+    throw err instanceof AppError ? err : failure
   }
 }
 

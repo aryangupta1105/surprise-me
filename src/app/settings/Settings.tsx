@@ -1,9 +1,10 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { openAccount } from '@/components/AccountDialog'
 import { ConnectRow, useConnections } from '@/components/Connections'
-import { Button, Card, Chip, api, useToast } from '@/components/ui'
+import { Button, Card, Chip, Field, Input, api, useToast } from '@/components/ui'
 import { ReminderCard } from '../studio/[id]/SharePanel'
 
 type U = { isGuest: boolean; email: string | null; name: string | null } | null
@@ -40,11 +41,22 @@ export function Settings({ user, blocksReferenceId }: { user: U; blocksReference
           <>
             <p className="text-ink-soft mt-2">Signed in as <b>{user.email ?? user.name}</b>. Your surprises follow you on any device.</p>
             <Button variant="secondary" className="mt-5" onClick={logout}>Sign out</Button>
+            {user.email && <ChangePassword />}
           </>
         ) : (
           <>
             <p className="text-ink-soft mt-2">You’re using SurpriseMe as a guest — your work is saved to this browser. Create a free account to keep it safe and use it anywhere; everything you made comes with you.</p>
-            {blocksReferenceId ? <BlocksLogin referenceId={blocksReferenceId} /> : <p className="mt-5 rounded-2xl bg-cream p-4 text-sm">Accounts are being set up — check back soon. Your guest work is safe meanwhile.</p>}
+            <ul className="mt-4 text-sm space-y-1 text-ink-soft">
+              <li>✓ Free, forever — no card</li>
+              <li>✓ Your surprises on any device</li>
+              <li>✓ Send by email, schedule delivery and add calendar reminders</li>
+              <li>✓ More AI help each day</li>
+            </ul>
+            <div className="mt-5 flex flex-wrap gap-2">
+              <Button onClick={() => openAccount()}>Create free account</Button>
+              <Button variant="secondary" onClick={() => openAccount(undefined, 'signin')}>Sign in</Button>
+            </div>
+            {blocksReferenceId && <BlocksLogin referenceId={blocksReferenceId} />}
           </>
         )}
       </Card>
@@ -63,8 +75,11 @@ export function Settings({ user, blocksReferenceId }: { user: U; blocksReference
       {user && (
         <Card className="p-6 sm:p-8">
           <h2 className="font-display text-2xl">Your data</h2>
-          <p className="text-ink-soft mt-1 text-sm">Delete everything: your surprises, photos, private links, scheduled emails and app connections.</p>
-          <Button variant="danger" className="mt-5" onClick={deleteAll}>Delete all my data</Button>
+          <p className="text-ink-soft mt-1 text-sm">Download a copy of everything you made, or delete it all: surprises, photos, private links, scheduled emails and app connections.</p>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Button variant="secondary" href="/api/me/export">Download my data</Button>
+            <Button variant="danger" onClick={deleteAll}>Delete all my data</Button>
+          </div>
         </Card>
       )}
     </div>
@@ -83,4 +98,30 @@ function BlocksLogin({ referenceId }: { referenceId: string }) {
     return () => s.remove()
   }, [referenceId])
   return <div id={referenceId} className="mt-5" />
+}
+
+function ChangePassword() {
+  const toast = useToast()
+  const [f, setF] = useState({ current: '', next: '' })
+  const [busy, setBusy] = useState(false)
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setBusy(true)
+    try {
+      await api('/api/auth/password', { body: f })
+      setF({ current: '', next: '' })
+      toast('Password changed — other devices were signed out', 'good')
+    } catch (err) {
+      toast((err as Error).message, 'bad')
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <form onSubmit={submit} className="mt-6 pt-6 border-t border-line grid sm:grid-cols-[1fr_1fr_auto] gap-3 items-end">
+      <Field label="Current password">{(id) => <Input id={id} type="password" autoComplete="current-password" value={f.current} onChange={(e) => setF({ ...f, current: e.target.value })} />}</Field>
+      <Field label="New password">{(id) => <Input id={id} type="password" autoComplete="new-password" minLength={8} required value={f.next} onChange={(e) => setF({ ...f, next: e.target.value })} />}</Field>
+      <Button type="submit" variant="secondary" loading={busy}>Change</Button>
+    </form>
+  )
 }

@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { db } from '@/lib/db'
 import { parseBody, rateLimit, route } from '@/lib/http'
-import { requireUser } from '@/lib/session'
+import { requireAccount, requireUser } from '@/lib/session'
 import { CALENDAR_TIMEZONES, createReminder } from '@/server/calendar'
 
 const Body = z.object({
@@ -24,6 +24,6 @@ export const GET = route(async () => {
 
 export const POST = route(async (req) => {
   rateLimit(req, 'reminder', 10, 60_000)
-  const user = await requireUser()
+  const user = await requireAccount('add calendar reminders')
   return { reminder: await createReminder(user.id, await parseBody(req, Body)) }
 })

@@ -190,6 +190,97 @@ export const TEMPLATES: Template[] = [
       finale('See you in the future', 'I can’t wait to see who we are by the time you read the last one.'),
     ],
   },
+  {
+    id: 'magazine-cover', name: 'Magazine Cover', emoji: '📰', category: 'Celebrate',
+    description: 'Put them on the cover: a glossy magazine issue all about them, with quotes from the “interview”.',
+    occasions: ['birthday', 'appreciation', 'just_because'], palette: 'sunrise', motion: 'full',
+    customize: ['The cover photo', 'Headline and cover lines', 'Their best quotes'],
+    scenes: [
+      opening('Hot off the press', 'Stop the presses, {to}', 'This month’s issue sold out in seconds. Guess who’s on the cover?'),
+      { kind: 'media', title: 'The cover', transition: 'zoom', blocks: [b('magazine_cover', {
+        masthead: 'ICON', issue: 'The {to} issue', headline: '{to}: the most iconic person we know',
+        coverLines: ['Exclusive: the secret behind that laugh', '10 times they were right (we checked)', 'Style, snacks and other talents', 'Plus: why everyone wants to be their friend'],
+      })] },
+      { kind: 'content', title: 'The interview', transition: 'slide', blocks: [
+        b('heading', { text: 'In their own words', size: 'md', kicker: 'The interview' }),
+        b('quote', { text: 'Write something they always say.', by: '{to}' }),
+        b('quote', { text: 'Write their best ever one-liner.', by: '{to}, probably at 2am' }),
+        b('awards', { title: 'This issue’s honours', awards: [
+        { emoji: '🌟', award: 'Cover star of the year', reason: 'Was there ever any doubt?' },
+        { emoji: '📸', award: 'Most photogenic', reason: 'Every angle. Every time.' },
+        { emoji: '💬', award: 'Most quotable', reason: 'See the interview for evidence.' },
+      ] }),
+      ] },
+      finale('That’s a wrap', 'You make the best headlines. Thanks for being the story I love telling.', '— {from}, Editor-in-chief'),
+    ],
+  },
+  {
+    id: 'personality-awards', name: 'Personality Awards', emoji: '🏆', category: 'Friendship',
+    description: 'A red-carpet ceremony of made-up trophies for everything that makes them, them.',
+    occasions: ['friendship', 'birthday', 'appreciation'], palette: 'midnight', motion: 'full',
+    customize: ['Award names', 'The reason for each award', 'An acceptance-speech photo'],
+    scenes: [
+      opening('Live from the red carpet', 'The {to} Awards', 'Tonight we honour one person, many talents. Please hold your applause.'),
+      { kind: 'content', title: 'The ceremony', transition: 'zoom', blocks: [b('awards', { title: 'And the award goes to… {to}!', awards: [
+        { emoji: '😂', award: 'Best laugh in a supporting role', reason: 'Contagious. Loud. Perfect.' },
+        { emoji: '🧭', award: 'Lifetime achievement in getting lost', reason: 'Somehow always finds the scenic route.' },
+        { emoji: '🍜', award: 'Snack curator of the year', reason: 'Never shows up empty-handed.' },
+        { emoji: '🫶', award: 'Most likely to show up', reason: 'Every time it matters, no questions asked.' },
+        { emoji: '✨', award: 'Main character energy', reason: 'Walks into a room and it gets better.' },
+      ] }), b('heading', { text: 'The acceptance speech', size: 'md', kicker: 'On stage now' }), b('image', { caption: 'Thank you, thank you, I’d like to thank…', alt: '' })] },
+      finale('The envelope, please', 'Every award tonight was easy to give. The hard part was stopping at five.'),
+    ],
+  },
+  {
+    id: 'journey-map', name: 'Our Journey Map', emoji: '🗺️', category: 'Memories',
+    description: 'Every place your story has stopped, pinned on a winding route with photos.',
+    occasions: ['anniversary', 'friendship', 'just_because'], palette: 'lagoon', motion: 'gentle',
+    customize: ['The places on your route', 'A photo for each stop', 'Your favourite snapshots'],
+    scenes: [
+      opening('Pack your bags', 'Where we’ve been, {to}', 'Some places are just places. These ones are ours.'),
+      { kind: 'content', title: 'The route', transition: 'slide', blocks: [b('journey', { title: 'Our journey so far', stops: [
+        { emoji: '📍', place: 'Where we met', dateLabel: 'The beginning', note: 'Write what you remember about that day.' },
+        { emoji: '☕', place: 'Our usual spot', dateLabel: '', note: 'The place that became ours.' },
+        { emoji: '✈️', place: 'Our first trip', dateLabel: '', note: 'Where did you go? What went wrong (and right)?' },
+        { emoji: '🏡', place: 'Right here, right now', dateLabel: 'Today', note: 'Where the story is today.' },
+      ] }), b('heading', { text: 'Postcards from the road', size: 'md', kicker: '' }), photos(4, 'polaroid', ['Wish you were here', 'Lost, but happy', 'Best view', 'Next stop?'])] },
+      finale('Next destination: anywhere', 'Every road is better with you on it. Where shall we go next?'),
+    ],
+  },
+  {
+    id: 'countdown-surprise', name: 'Countdown Surprise', emoji: '⏰', category: 'Celebrate',
+    description: 'A live countdown to the big day, with a secret to scratch off while they wait.',
+    occasions: ['birthday', 'anniversary', 'custom'], palette: 'candy', motion: 'full',
+    customize: ['Set the countdown date (it starts as 1 January 2027)', 'The message when it hits zero', 'The secret under the scratch card'],
+    scenes: [
+      opening('Tick tock', 'Something is coming, {to}', 'Mark your calendar. The clock is already running.'),
+      { kind: 'game', title: 'The countdown', transition: 'zoom', blocks: [b('countdown', { target: '2027-01-01T00:00:00.000Z', title: 'Until the big day', doneMessage: 'It’s here! Today is the day.' }), b('handwritten', { text: 'Can’t wait? Neither can I. Scratch below for a sneak peek…' }), b('scratch_reveal', { prompt: 'Scratch for a clue', hiddenText: 'Write a hint about what’s coming (but don’t give it all away!)' })] },
+      finale('See you soon', 'Every second on that clock is a second closer to you. I’m counting too.'),
+    ],
+  },
+  {
+    id: 'mini-game', name: 'Mini Game Experience', emoji: '🕹️', category: 'Games',
+    description: 'A little arcade made for them: a memory game, a pop quiz and a prize at the end.',
+    occasions: ['birthday', 'friendship', 'just_because'], palette: 'candy', motion: 'full',
+    customize: ['Pairs that mean something to you two', 'Quiz questions and answers', 'The prize in the final letter'],
+    scenes: [
+      opening('Player one, ready?', 'Game on, {to}!', 'Two levels. One prize. No cheat codes.'),
+      { kind: 'game', title: 'Level 1: Memory match', transition: 'zoom', blocks: [b('memory_match', { title: 'Find our favourite things', pairs: [
+        { emoji: '🍕', label: 'Pizza nights' }, { emoji: '🎬', label: 'Movie marathons' }, { emoji: '🌊', label: 'Beach days' },
+        { emoji: '☕', label: 'Coffee runs' }, { emoji: '🎤', label: 'Bad karaoke' }, { emoji: '🐶', label: 'That one dog' },
+      ] })] },
+      { kind: 'game', title: 'Level 2: Pop quiz', transition: 'slide', blocks: [b('quiz', {
+        questions: [
+          { question: 'Who is the better cook?', options: ['Me', 'You', 'Neither', 'The delivery guy'], correctIndex: 3, reveal: 'We both know it.' },
+          { question: 'Our go-to late-night snack?', options: ['Chips', 'Noodles', 'Ice cream', 'Toast'], correctIndex: 1, reveal: 'Change the options to match you.' },
+          { question: 'Who falls asleep first during movies?', options: ['Me', 'You', 'Both', 'Neither'], correctIndex: 1, reveal: 'Every. Single. Time.' },
+          { question: 'Where should we go next?', options: ['Mountains', 'Beach', 'City', 'Anywhere with you'], correctIndex: 3, reveal: '' },
+        ],
+        results: { high: 'High score! You’re a legend.', medium: 'Respectable. Rematch soon?', low: 'Game over… but you still win, because you’ve got me.' },
+      })] },
+      finale('You win!', 'Final score: you, infinity. Your prize: write it here — a trip, a dinner, a promise. Thanks for being my favourite player two.'),
+    ],
+  },
 ]
 
 /** "Start from a blank canvas": the smallest useful story, not listed with the templates. */

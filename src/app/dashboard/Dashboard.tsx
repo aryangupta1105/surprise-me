@@ -1,5 +1,6 @@
 'use client'
 
+import { openAccount } from '@/components/AccountDialog'
 import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 import { Button, Card, Chip, EmptyState, ErrorState, Spinner, api, cx, useToast } from '@/components/ui'
@@ -21,7 +22,7 @@ const match: Record<(typeof FILTERS)[number], (r: Row) => boolean> = {
 }
 const date = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
 
-export function Dashboard() {
+export function Dashboard({ isGuest }: { isGuest: boolean }) {
   const toast = useToast()
   const [rows, setRows] = useState<Row[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -61,6 +62,12 @@ export function Dashboard() {
         </div>
         <Button href="/create" size="lg">+ New surprise</Button>
       </div>
+      {isGuest && rows && rows.length > 0 && (
+        <div className="mt-6 rounded-2xl bg-white ring-1 ring-line p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <p className="text-sm"><b>You’re using SurpriseMe as a guest.</b> <span className="text-ink-soft">Your surprises live in this browser. A free account keeps them safe on any device and unlocks email delivery and reminders.</span></p>
+          <Button size="sm" onClick={() => openAccount()}>Create free account</Button>
+        </div>
+      )}
 
       <div className="flex gap-2 mt-7 overflow-x-auto p-1 -mx-1" role="tablist">
         {FILTERS.map((f) => (

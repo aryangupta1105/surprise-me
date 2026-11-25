@@ -57,8 +57,10 @@ describe('composeTemplates', () => {
   it('refuses unknown templates and too many scenes', () => {
     expect(() => composeTemplates(['nope'], names)).toThrow(/Unknown template/)
     expect(() => composeTemplates([], names)).toThrow(/at least one/)
-    const big = { ...names }
-    const doc = composeTemplates(TEMPLATES.map((t) => t.id), big).doc
+    // Keep inserting templates until the 30-scene limit refuses one with a clear message.
+    let doc = composeTemplates(['digital-memory-book'], names).doc
+    const grow = () => { for (;;) doc = insertTemplate(doc, 'our-soundtrack', 1, names).doc }
+    expect(grow).toThrow(/up to 30/)
     expect(doc.scenes.length).toBeLessThanOrEqual(30)
   })
   it('lists missing media', () => {

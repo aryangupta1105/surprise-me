@@ -2,11 +2,12 @@
 
 import { connect, loadConnectScript } from 'viasocket-apps/browser'
 import { useCallback, useEffect, useState } from 'react'
+import { openAccount } from './AccountDialog'
 import { Button, Chip, Spinner, api, useToast } from './ui'
 
 export type AppKey = 'gmail' | 'calendar'
 type Conn = { app: AppKey; label: string | null; authId: string; expired: boolean; missing: boolean }
-type State = { connections: Conn[]; token: string; apps: Record<AppKey, { serviceId: string; actionId: string }> }
+type State = { connections: Conn[]; token: string; apps: Record<AppKey, { serviceId: string; actionId: string }>; accountRequired?: boolean }
 
 const NAMES: Record<AppKey, { name: string; icon: string; why: string }> = {
   gmail: { name: 'Gmail', icon: 'https://stuff.thingsofbrand.com/gmail.com/images/imge_idrA5FDGTH_1763454052978.svg', why: 'Send surprises from your own address.' },
@@ -96,7 +97,9 @@ export function ConnectRow({ app, conns }: { app: AppKey; conns: ReturnType<type
         </p>
         <p className="text-sm text-ink-soft truncate">{conn?.label ?? info.why}</p>
       </div>
-      {!conns.state ? (
+      {conns.state?.accountRequired ? (
+        <Button size="sm" variant="secondary" onClick={() => openAccount(`Create a free account to connect ${info.name} — it takes a few seconds and keeps everything you've made.`)}>Create free account</Button>
+      ) : !conns.state ? (
         conns.error ? <span className="text-xs text-rose-deep max-w-40">{conns.error}</span> : <Spinner />
       ) : conn && !conn.expired ? (
         <div className="flex gap-1">

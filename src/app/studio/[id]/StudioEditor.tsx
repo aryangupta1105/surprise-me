@@ -28,6 +28,7 @@ export type EditorSurprise = {
   progress: number
   lastOpenedAt: string | null
   completedAt: string | null
+  hasLinkPassword: boolean
 }
 
 const TABS = ['Edit', 'Preview', 'Share'] as const

@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { parseBody, rateLimit, route } from '@/lib/http'
 import { createDelivery } from '@/server/delivery'
-import { requireUser as me } from '@/lib/session'
+import { requireAccount } from '@/lib/session'
 
 const Body = z.object({
   recipientEmail: z.string().trim().email(),
@@ -15,7 +15,7 @@ const Body = z.object({
 
 export const POST = route<{ id: string }>(async (req, { params }) => {
   rateLimit(req, 'deliver', 10, 60_000)
-  const user = await me()
+  const user = await requireAccount('send it by email')
   const b = await parseBody(req, Body)
   const delivery = await createDelivery((await params).id, user.id, { ...b, sendAt: b.sendAt ?? null })
   return { delivery }

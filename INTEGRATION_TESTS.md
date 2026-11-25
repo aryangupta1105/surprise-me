@@ -70,3 +70,19 @@ Every external call, how it was tested and its status. Re-run commands are in RE
 | Drag scene 10 to position 2; History → restore oldest; Undo | built-in browser | order changes; restore brings back the template order; undo restores music and dragged order |
 | Switch "Maya's Open When Letters" (published, single experience) to scenes | built-in browser | opens as Opening / The surprise / Finale |
 | Blank canvas from `/templates` | built-in browser | 3-scene draft, opens in the editor |
+
+## Phases 7–10
+
+| Check | How | Result |
+| --- | --- | --- |
+| AI assistant operations, skips, media-id stripping, ownership, malformed output | Vitest `tests/assistant.test.ts` (9) | pass |
+| AI assistant live | `scripts/test-assistant.mts` (8.4 s) and browser (8.0 s, Accept, Undo/Redo) | changes applied; placeholder used instead of invented memory |
+| New blocks' schemas | Vitest `tests/blocks.test.ts` | pass |
+| Accounts, guest upgrade/merge, password change, gating, AI allowance | Vitest `tests/accounts.test.ts` | pass |
+| Link password, reactions, group messages | Vitest `tests/sharing.test.ts` | pass |
+| Browser, guest → account | email card prompt → dialog → account; 9 guest surprises kept | pass |
+| Browser, 5 new templates merged, played through | magazine cover, memory match solved 6/6, countdown live, awards, journey | pass |
+| Browser, recipient on phone size | password screen, wrong password refused, unlock, reaction sent | pass (after fixing the resume bug) |
+| Browser, friend's invite link → message → creator adds it | new scene before finale | pass |
+| Database backup to B2 | live run | 495 KB snapshot uploaded; second run skipped (once a day) |
+| Totals | `npm test`, build, viaSocket check | 119/119, build OK, 0 FAIL / 1 WARN (known pending Gmail scope report) |

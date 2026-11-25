@@ -72,6 +72,12 @@ export function Player({ doc, photo, onProgress, resumeKey, preview, startAt }: 
     [total, resumeKey, report, preview],
   )
 
+  // Resuming mid-way (or on the last scene) counts as having reached that point.
+  const startIndex = useRef(index)
+  useEffect(() => {
+    if (startIndex.current > 0) report((startIndex.current / Math.max(1, total - 1)) * 100)
+  }, [report, total])
+
   const celebrate = useCallback(() => {
     if (motionLevel === 'off' || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
     confetti({ particleCount: motionLevel === 'gentle' ? 60 : 140, spread: 90, origin: { y: 0.6 } })

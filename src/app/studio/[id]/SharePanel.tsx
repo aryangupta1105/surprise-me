@@ -1,7 +1,9 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { openAccount } from '@/components/AccountDialog'
 import { ConnectRow, useConnections } from '@/components/Connections'
+import { LinkPasswordCard, TogetherCard } from './Together'
 import { Button, Card, Chip, Field, Input, Modal, Select, Textarea, api, useToast } from '@/components/ui'
 import { CALENDAR_TIMEZONES } from '@/lib/catalog'
 import { emailHtml } from '@/lib/email'
@@ -88,6 +90,12 @@ export function SharePanel({ s, setS, dirty, save, isGuest }: { s: EditorSurpris
                 <Button size="sm" variant="danger" onClick={revoke} loading={busy === 'revoke'}>Turn off link</Button>
               </div>
               <p className="text-xs text-ink-soft mt-4">They see the version you last published. After editing, click <b>Publish changes</b> — the link stays the same.</p>
+              {isGuest && (
+                <div className="mt-5 rounded-2xl bg-cream p-4 flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+                  <p className="text-sm"><b>Keep it safe.</b> Right now it lives in this browser only. A free account keeps it — and your reactions — on any device.</p>
+                  <Button size="sm" onClick={() => openAccount('Create a free account to keep this surprise safe and see their reactions on any device.')}>Create free account</Button>
+                </div>
+              )}
             </>
           ) : (
             <>
@@ -106,6 +114,9 @@ export function SharePanel({ s, setS, dirty, save, isGuest }: { s: EditorSurpris
           </div>
           <p className="text-xs text-ink-soft mt-4">{s.lastOpenedAt ? `Last opened ${fmt(s.lastOpenedAt)}.` : 'Not opened yet.'} We only count opens and progress — nothing about who opened it.</p>
         </Card>
+
+        <LinkPasswordCard s={s} setS={setS} />
+        <TogetherCard s={s} />
 
         <ReminderCard surpriseId={s.id} recipientName={s.recipientName} reminders={reminders} conns={conns} onCreated={load} />
       </div>
@@ -171,7 +182,9 @@ function EmailCard({ s, live, conns, deliveries, reload, isGuest }: { s: EditorS
       <h2 className="font-display text-2xl">Send by email</h2>
       <p className="text-ink-soft mt-1 text-sm">Sent from your own Gmail, so it lands like a real note from you.</p>
       <div className="mt-5"><ConnectRow app="gmail" conns={conns} /></div>
-      {isGuest && <p className="text-xs text-ink-soft mt-3">Tip: create an account in Settings so your connection and scheduled emails are tied to you, not just this browser.</p>}
+      {isGuest && (
+        <p className="text-sm mt-3 rounded-2xl bg-cream p-3">Sending email needs a free account (so messages always come from a real person). <button className="font-semibold text-rose" onClick={() => openAccount('Create a free account to send your surprise by email — it takes a few seconds and keeps everything you’ve made.')}>Create one →</button></p>
+      )}
 
       {!live ? (
         <p className="mt-6 rounded-2xl bg-cream p-4 text-sm">Publish the surprise first — the email carries its private link.</p>

@@ -1,5 +1,5 @@
 // Creates (or updates) the viaSocket automation that drives scheduled email delivery:
-// every 5 minutes it POSTs to APP_URL/api/cron/tick with the CRON_SECRET header.
+// every 5 minutes it POSTs to APP_URL/api/cron/tick with the TICK_SECRET header.
 // The flow belongs to a fixed system user of this product (one stable id), as viaSocket's AI/automation docs advise
 // for work with no end user present. Run after each deploy (APP_URL must be the public URL):
 //   node --env-file=.env --import tsx scripts/setup-scheduler.mts [--pause]
@@ -7,8 +7,8 @@ import { ViaSocket } from 'viasocket-apps'
 
 const SYSTEM_USER = 'surpriseme-system'
 const TITLE = 'SurpriseMe scheduled delivery tick'
-const { APP_URL, CRON_SECRET } = process.env
-if (!APP_URL || !CRON_SECRET) throw new Error('APP_URL and CRON_SECRET are required')
+const { APP_URL, TICK_SECRET } = process.env
+if (!APP_URL || !TICK_SECRET) throw new Error('APP_URL and TICK_SECRET are required')
 
 const vs = new ViaSocket({ orgId: process.env.VIASOCKET_ORG_ID!, projectId: process.env.VIASOCKET_PROJECT_ID!, secret: process.env.VIASOCKET_EMBED_SECRET! })
 const user = vs.user(SYSTEM_USER)
@@ -20,7 +20,7 @@ console.log('flow', scriptId ? 'ready' : 'missing')
 
 await user.setTrigger(scriptId, { triggerType: 'cron', cronStatement: '*/5 * * * *', timezone: 'UTC' })
 const code = `
-const res = await axios.post(${JSON.stringify(`${APP_URL.replace(/\/$/, '')}/api/cron/tick`)}, {}, { headers: { 'x-cron-secret': ${JSON.stringify(CRON_SECRET)} }, timeout: 50000 })
+const res = await axios.post(${JSON.stringify(`${APP_URL.replace(/\/$/, '')}/api/cron/tick`)}, {}, { headers: { 'x-cron-secret': ${JSON.stringify(TICK_SECRET)} }, timeout: 50000 })
 console.log('### tick', JSON.stringify(res.data))
 return res.data`
 await user.saveSteps(scriptId, [{ stepname: 'tick', code, serviceActionFunctions: [] }])

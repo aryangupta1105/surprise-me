@@ -51,3 +51,10 @@ export async function requireUser() {
   if (!user) throw new AppError(401, 'Your session has ended. Start a new surprise.', 'no_session')
   return user
 }
+
+/** Things that act in the world on someone's behalf (sending email, calendar events, app connections) need a free account. */
+export async function requireAccount(action = 'do this') {
+  const user = await requireUser()
+  if (user.isGuest) throw new AppError(403, `Create a free account to ${action} — it takes a few seconds and keeps everything you've made.`, 'account_required')
+  return user
+}

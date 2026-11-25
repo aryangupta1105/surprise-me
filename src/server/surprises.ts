@@ -1,4 +1,6 @@
 import 'server-only'
+import { createHmac, timingSafeEqual } from 'node:crypto'
+import { cookies } from 'next/headers'
 import { db } from '@/lib/db'
 import { decrypt, encrypt, randomToken, sha256 } from '@/lib/crypto'
 import { env } from '@/lib/env'
@@ -232,12 +234,30 @@ async function publishedDoc(s: { publishedVersionId: string | null; content: unk
   return legacyDraftDoc(s)
 }
 
-/** Recipient side: resolves a private link. Returns only what the recipient may see. */
-export async function openByToken(token: string) {
+/** A live private link's surprise (published, not revoked or expired), ignoring any link password. */
+export async function liveLink(token: string) {
   if (!/^[A-Za-z0-9_-]{20,64}$/.test(token)) return null
   const s = await db.surprise.findUnique({ where: { linkTokenHash: sha256(token) } })
   if (!s || s.status !== 'PUBLISHED' || s.linkRevokedAt) return null
   if (s.linkExpiresAt && s.linkExpiresAt < new Date()) return null
+  return s
+}
+
+// Link passwords: a correct password sets an httpOnly cookie bound to this link and this password,
+// so changing the password locks every browser out again.
+export const unlockCookie = (token: string) => `sm_unlock_${sha256(token).slice(0, 16)}`
+export const unlockValue = (token: string, passwordHash: string) => createHmac('sha256', env.APP_SECRET).update(`${token}|${passwordHash}`).digest('base64url')
+async function isUnlocked(token: string, passwordHash: string) {
+  const got = (await cookies()).get(unlockCookie(token))?.value ?? ''
+  const want = unlockValue(token, passwordHash)
+  return got.length === want.length && timingSafeEqual(Buffer.from(got), Buffer.from(want))
+}
+
+/** Recipient side: resolves a private link. Returns only what the recipient may see (null if gone or still password-locked). */
+export async function openByToken(token: string) {
+  const s = await liveLink(token)
+  if (!s) return null
+  if (s.linkPasswordHash && !(await isUnlocked(token, s.linkPasswordHash))) return null
   const doc = await publishedDoc(s).catch(() => null)
   if (!doc) return null
   return { id: s.id, doc: withLockedContentHidden(doc), recipientName: s.recipientName, creatorName: s.creatorName }
