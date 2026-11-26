@@ -69,6 +69,16 @@ export function modelSchema(value: unknown): unknown {
     return Object.fromEntries(Object.entries(value).filter(([k]) => !UNSUPPORTED.has(k)).map(([k, v]) => [k, modelSchema(v)]))
   return value
 }
+
+/** The model never sees length bounds (above), so an answer that runs long is trimmed to fit instead of rejected. */
+export function fitToSchema(value: unknown, s: { maxLength?: number; maxItems?: number; items?: unknown; properties?: Record<string, unknown> } | undefined): unknown {
+  if (!s || typeof s !== 'object') return value
+  if (typeof value === 'string') return s.maxLength ? value.slice(0, s.maxLength).trim() : value
+  if (Array.isArray(value)) return value.slice(0, s.maxItems).map((v) => fitToSchema(v, s.items as typeof s))
+  if (value && typeof value === 'object' && s.properties)
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, fitToSchema(v, s.properties![k] as typeof s)]))
+  return value
+}
 const jsonSchemaFor = (name: string, schema: z.ZodType) => ({
   name,
   schema: modelSchema(z.toJSONSchema(schema)) as Record<string, unknown>,
@@ -104,7 +114,7 @@ export async function askJson(userId: string, threadId: string, prompt: string, 
     })
   if (reply.finishReason === 'truncated') throw new Error('The AI ran out of space before finishing (truncated).')
   const content = typeof reply.content === 'string' ? JSON.parse(reply.content) : reply.content
-  return schema.parse(content) // malformed or incomplete output throws here
+  return schema.parse(fitToSchema(content, z.toJSONSchema(schema) as Parameters<typeof fitToSchema>[1])) // malformed or incomplete output throws here
 }
 
 /** Claims a surprise for generation atomically, so a double-click cannot start two runs. */
